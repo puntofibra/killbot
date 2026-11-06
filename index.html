@@ -466,6 +466,15 @@ textarea.inp{resize:vertical;font-family:inherit}
 @keyframes sputter{0%,34%{opacity:0;transform:scaleX(.2)}36%{opacity:.9;transform:scaleX(.55)}39%{opacity:0;transform:scaleX(.3)}44%{opacity:.7;transform:scaleX(.4)}46%{opacity:0}62%{opacity:0;transform:scaleX(.3)}64%{opacity:1;transform:scaleX(1)}70%{opacity:.85;transform:scaleX(.8)}72%{opacity:.2;transform:scaleX(.5)}74%{opacity:.95;transform:scaleX(.95)}79%{opacity:0;transform:scaleX(.3)}100%{opacity:0}}
 .noz .puff{position:absolute;left:40%;top:-10px;width:20px;height:20px;border-radius:50%;background:radial-gradient(rgba(190,200,210,.6),transparent 70%);opacity:0;animation:puff var(--d) var(--w) infinite}
 @keyframes puff{0%,78%{opacity:0;transform:translate(0,0) scale(.5)}82%{opacity:.75}100%{opacity:0;transform:translate(30px,-25px) scale(2.6)}}
+/* aviso TV */
+.tvAv{max-width:430px;padding-top:12px}
+.tvAvImg{height:150px;display:flex;justify-content:center;margin-bottom:2px}
+.tvAvImg img{height:150px;filter:drop-shadow(0 0 18px rgba(255,210,63,.5));animation:float 3s ease-in-out infinite}
+.tvAv p{margin:0 0 10px;font-size:15px}
+.tvAv p b{color:#ffd23f}
+.tvAvTip{padding:10px 12px;border-radius:14px;background:rgba(255,210,63,.08);border:1px solid rgba(255,210,63,.35)}
+.tvAvChk{display:flex;align-items:center;justify-content:center;gap:8px;font-size:13px;color:var(--mut);margin:4px 0 14px}
+.tvAvChk input{width:18px;height:18px;accent-color:#ffd23f}
 /* avisos */
 .seenBy{text-align:center;font-size:11px;color:var(--mut);margin-top:3px;font-family:Orbitron}
 .kbc{position:fixed;inset:0;z-index:95;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(0,0,0,.72);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);animation:ovIn .2s both}
@@ -841,7 +850,7 @@ function showMenu(){
   if ($('#bOut')) $('#bOut').onclick = ()=>{ logout(); showMenu(); };
   if ($('#bCred')) $('#bCred').onclick = ()=>showComprar();
   if ($('#bLog')) $('#bLog').onclick = ()=>showLogin();
-  $('#bTv').onclick = ()=>{ SFX.click(); create('tv',''); };
+  $('#bTv').onclick = ()=>{ SFX.click(); tvAviso(()=>create('tv',''), ()=>create('movil', USER?USER.user.nombre:'')); };
   $('#bJoin').onclick = ()=>{ SFX.click(); showJoin(''); };
   $('#bWeb').onclick = ()=>{ SFX.click(); MUS.stop(); location.href='https://puntofibra.github.io/web/'; };
   $('#bHow').onclick = ()=>{ SFX.click(); howTo(); };
@@ -979,6 +988,28 @@ function kbConfirm(msg, o={}){
 }
 const kbAlert=(msg,o={})=>kbConfirm(msg,Object.assign({noCancel:true,ok:'Entendido',icon:'ℹ️',title:'Aviso'},o));
 window.alert = m=>kbAlert(esc(m));
+
+/* Aviso antes de jugar en TV / PC */
+function tvAviso(onTv, onMov){
+  let skip=false; try{ skip=localStorage.getItem('kb_tvaviso')==='1'; }catch(e){}
+  if (skip) return onTv();
+  const txt='Esta misión exige mucha potencia gráfica. Algunos televisores con poca memoria pueden cerrar el juego en mitad de la partida. Para una experiencia sin cortes, te recomendamos usar un ordenador como pantalla, o jugar en modo solo móviles.';
+  const w=document.createElement('div'); w.className='kbc';
+  w.innerHTML=`<div class="kbcBox tvAv" style="--kc:#ffd23f">
+    <div class="tvAvImg">${pimg('pj_tuercas', robotSVG('#ffe14d'))}</div>
+    <h3>📡 Aviso del Dr. Tuercas</h3>
+    <p>Esta misión exige <b>mucha potencia gráfica</b>. Algunos televisores con poca memoria pueden <b>cerrar el juego</b> en mitad de la partida.</p>
+    <p class="tvAvTip">💡 Para una experiencia sin cortes, usa un <b>ordenador como pantalla</b> o juega en modo <b>Solo móviles</b>.</p>
+    <label class="tvAvChk"><input type="checkbox" id="avNo"> No volver a mostrar en esta pantalla</label>
+    <div class="row"><button class="btn ghost" data-v="mov">📱 Solo móviles</button><button class="btn gold" data-v="tv">📺 Continuar</button></div></div>`;
+  document.body.appendChild(w); vib(40);
+  try{ VOZ.sayAlways('Aviso del doctor Tuercas. '+txt); }catch(e){}
+  w.querySelectorAll('[data-v]').forEach(b=>b.onclick=()=>{
+    if (w.querySelector('#avNo').checked){ try{ localStorage.setItem('kb_tvaviso','1'); }catch(e){} }
+    try{ VOZ.stop(); }catch(e){} SFX.click(); w.classList.add('out'); setTimeout(()=>w.remove(),250);
+    b.dataset.v==='tv' ? onTv() : onMov();
+  });
+}
 
 /* ═════════════ MODALES ═════════════ */
 function modal(html, onClose){
@@ -1392,8 +1423,8 @@ const VOZ = (()=>{
     const pref=[/google.*espa/i,/microsoft.*(elvira|alvaro|helena|laura|pablo)/i,/(monica|mónica|paulina|jorge|marisol)/i,/es-ES/i];
     for(const r of pref){ const v=es.find(v=>r.test(v.name)||r.test(v.lang)); if(v) return v; } return es[0]||null; };
   if (window.speechSynthesis){ voice=pick(); speechSynthesis.onvoiceschanged=()=>{ voice=pick(); }; }
-  function say(txt){
-    if(!window.speechSynthesis || !txt || document.hidden || !vozOn()) return;
+  function say(txt, force){
+    if(!window.speechSynthesis || !txt || document.hidden || (!force && !vozOn()) || (force && !AU.on)) return;
     const u=new SpeechSynthesisUtterance(txt); u.lang=(voice&&voice.lang)||'es-ES'; if(voice) u.voice=voice; u.rate=1.02; u.pitch=1; u.volume=1;
     talking++; MUS.duck(true);
     const done=()=>{ if(u._d) return; u._d=1; talking=Math.max(0,talking-1); if(!talking) setTimeout(()=>{ if(!talking) MUS.duck(false); },250); };
@@ -1401,7 +1432,7 @@ const VOZ = (()=>{
     speechSynthesis.speak(u);
   }
   function stop(){ try{ speechSynthesis.cancel(); }catch(e){} talking=0; MUS.duck(false); }
-  return { say, stop };
+  return { say, stop, sayAlways: t=>say(t,true) };
 })();
 function vozPref(){ try{ return localStorage.getItem('kb_voz'); }catch(e){ return null; } }
 function vozOn(){ const g=S.g; if(!g || !AU.on) return false; const p=vozPref(); if(p==='0') return false; if(p==='1') return true;
@@ -1880,7 +1911,7 @@ const Admin = (()=>{
 })();
 
 /* ═════════════ AUTO-ACTUALIZACIÓN ═════════════ */
-const APP_V = '26';
+const APP_V = '27';
 async function checkVersion(){
   try{
     const r = await fetch('version.json?t='+Date.now(), {cache:'no-store'}); if(!r.ok) return;
