@@ -727,7 +727,7 @@ function view_(g, token) {
   var v = {
     code: g.code, modo: g.modo, status: g.status, ver: g.ver, evn: g.evn, ev: g.ev, log: g.log,
     isHost: g.host === token, me: me ? me.id : null, turn: g.turn, phase: g.phase,
-    dice: g.dice, reach: g.reach || [], pos: g.pos, wpos: g.wpos, winner: g.winner, musicPid: g.musicPid || null, now: Date.now()
+    dice: g.dice, reach: g.reach || [], pos: g.pos, wpos: g.wpos, winner: g.winner, musicPid: g.musicPid || null, autoEnd: g.autoEnd || 0, now: Date.now()
   };
   v.players = g.players.map(function (p) {
     return { id: p.id, name: p.name, sus: p.sus, bot: p.bot, alive: p.alive, summoned: p.summoned, n: p.hand.length, host: p.token === g.host };
@@ -845,6 +845,7 @@ function suggest_(g, p, sus, wea) {
   }
   g.sug.result = 'nadie';
   g.phase = 'accion';
+  g.autoEnd = Date.now() + 30000;   // tiempo para acusar si quiere; luego pasa el turno solo
   ev_(g, 'nadie', { by: p.id });
   log_(g, '😱 ¡Nadie puede desmentir a ' + p.name + '!');
 }
@@ -862,6 +863,7 @@ function show_(g, q, card) {
   g.sug.result = 'visto';
   g.sug.refuter = q.id;
   g.phase = 'accion';
+  g.autoEnd = Date.now() + 18000;   // ya ha visto la carta: el turno pasa solo (incluye las animaciones)
   if (by.seen.indexOf(card) < 0) by.seen.push(card);
   q.shownTo = q.shownTo || {};
   q.shownTo[by.id] = q.shownTo[by.id] || [];
@@ -902,7 +904,7 @@ function next_(g) {
     var i = (g.turn + k) % n;
     if (g.players[i].alive) { g.turn = i; break; }
   }
-  g.phase = 'tirar'; g.dice = null; g.reach = [];
+  g.phase = 'tirar'; g.dice = null; g.reach = []; g.autoEnd = 0;
   ev_(g, 'turno', { by: cur_(g).id });
 }
 
@@ -939,6 +941,7 @@ function botDue_(g) {
   if (g.status !== 'playing') return false;
   var now = Date.now();
   if (g.phase === 'refutar') return g.sug && now > g.sug.deadline;
+  if (g.phase === 'accion' && g.autoEnd && now > g.autoEnd) return true;
   var c = cur_(g);
   return c && c.bot && now - g.lastAct > aj_('botMs');
 }
@@ -956,6 +959,10 @@ function botStep_(g) {
     return;
   }
   var p = cur_(g);
+  if (!p.bot && g.phase === 'accion' && g.autoEnd && Date.now() > g.autoEnd) {
+    log_(g, '⏭️ Turno terminado automáticamente');
+    next_(g); g.lastAct = Date.now(); return;
+  }
   var us = unknown_(p, SUS), uw = unknown_(p, WEA), ur = unknown_(p, ROOMS);
   var sure = us.length === 1 && uw.length === 1 && ur.length === 1;
   if (sure && (g.phase === 'tirar' || g.phase === 'accion' || g.phase === 'sospechar')) {

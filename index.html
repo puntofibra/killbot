@@ -776,7 +776,7 @@ function clearSess(){ try{ localStorage.removeItem('kb_sess'); }catch(e){} }
 function logoHTML(){ return `<div class="logo">${FAILED.has('logo')?`<div class="logoTxt" data-t="KILLBOT">KILLBOT</div>`:`<img class="lg" src="${IMG}logo.png" onerror="this.outerHTML='<div class=&quot;logoTxt&quot; data-t=&quot;KILLBOT&quot;>KILLBOT</div>'">`}<div class="sub">ASESINATO EN LA NAVE KB-9</div></div>`; }
 
 function showMenu(){
-  S.screen='menu'; stopPoll(); setTimeout(musSync,0); if(USER) setTimeout(refreshUser,50);
+  S.screen='menu'; try{VOZ.stop();}catch(e){} stopPoll(); setTimeout(musSync,0); if(USER) setTimeout(refreshUser,50);
   const s = loadSess();
   app.innerHTML = `<div class="screen"><div class="menu">
     ${logoHTML()}
@@ -1084,6 +1084,7 @@ function buildGame(){
       <button class="btn" onclick="closeModal();howTo()">📖 Cómo se juega</button>
       <button class="btn" onclick="share(joinUrl(S.code),'Partida KILLBOT ' + S.code + ':')">📤 Compartir sala</button>
       <button class="btn" id="bFs" onclick="toggleFs();closeModal()">⛶ Pantalla completa sí / no</button>
+      <button class="btn" onclick="vozToggle();closeModal()">🗣️ Narrador sí / no</button>
       <button class="btn red" onclick="kbConfirm('Si sales, la partida seguirá sin ti.',{title:'¿Salir de la partida?',icon:'🚪',ok:'Salir',danger:true,color:'var(--red)'}).then(v=>v&&exitGame())">🚪 Salir al menú</button>
       <button class="btn ghost" onclick="closeModal()">Cerrar</button></div>`);
   }
@@ -1218,7 +1219,8 @@ function renderPanel(){
   } else if (g.phase==='refutar'){
     h = `<div class="ptxt">${phaseText(g)}</div>`;
   } else if (g.phase==='accion'){
-    h = sugMini() + `<div class="row"><button class="btn red" id="bAcc">⚖️ Acusar</button><button class="btn green" id="bEnd">✅ Terminar turno</button></div>`;
+    const left = g.autoEnd ? Math.max(0, Math.ceil((g.autoEnd - g.now)/1000)) : 0;
+    h = sugMini() + (left?`<div class="ptxt" style="font-size:14px;color:var(--mut)">⏭️ El turno pasará solo en <b id="aeT" data-t="${Date.now()+left*1000}">${left}</b> s</div>`:'') + `<div class="row"><button class="btn red" id="bAcc">⚖️ Acusar</button><button class="btn green" id="bEnd">✅ Terminar turno</button></div>`;
   }
   pn.innerHTML = h;
   const on=(id,f)=>{ const b=$(id); if(b) b.onclick=f; };
@@ -1332,6 +1334,53 @@ function updateTvSide(){
   $('#tvLog').innerHTML = g.log.slice(-12,-1).reverse().map(l=>`<div>${esc(l.txt)}</div>`).join('');
 }
 
+setInterval(()=>{ const t=document.getElementById('aeT'); if(t) t.textContent=Math.max(0,Math.ceil((+t.dataset.t-Date.now())/1000)); },500);
+
+/* ═════════════ NARRADOR (voz del navegador) ═════════════ */
+const VOZ = (()=>{
+  let voice=null;
+  const pick=()=>{ const vs=(window.speechSynthesis&&speechSynthesis.getVoices())||[]; const es=vs.filter(v=>/^es/i.test(v.lang));
+    const pref=[/google.*espa/i,/microsoft.*(elvira|alvaro|helena|laura|pablo)/i,/(monica|mónica|paulina|jorge|marisol)/i,/es-ES/i];
+    for(const r of pref){ const v=es.find(v=>r.test(v.name)||r.test(v.lang)); if(v) return v; } return es[0]||null; };
+  if (window.speechSynthesis){ voice=pick(); speechSynthesis.onvoiceschanged=()=>{ voice=pick(); }; }
+  function say(txt){
+    if(!window.speechSynthesis || !txt || document.hidden || !vozOn()) return;
+    const u=new SpeechSynthesisUtterance(txt); u.lang=(voice&&voice.lang)||'es-ES'; if(voice) u.voice=voice; u.rate=1.02; u.pitch=1; u.volume=1;
+    speechSynthesis.speak(u);
+  }
+  function stop(){ try{ speechSynthesis.cancel(); }catch(e){} }
+  return { say, stop };
+})();
+function vozPref(){ try{ return localStorage.getItem('kb_voz'); }catch(e){ return null; } }
+function vozOn(){ const g=S.g; if(!g || !AU.on) return false; const p=vozPref(); if(p==='0') return false; if(p==='1') return true;
+  if (g.modo==='tv') return !g.me; return g.musicPid===g.me; }
+function vozToggle(){ const now=vozOn(); try{ localStorage.setItem('kb_voz', now?'0':'1'); }catch(e){} if(now) VOZ.stop(); toast(now?'🗣️ Narrador desactivado':'🗣️ Narrador activado'); }
+document.addEventListener('visibilitychange', ()=>{ if(document.hidden) VOZ.stop(); });
+const ART_R={puente:'el Puente de mando',observatorio:'el Observatorio',laboratorio:'el Laboratorio',invernadero:'el Invernadero',cocina:'la Cocina orbital',criogenia:'la sala de Criogenia',hangar:'el Hangar',taller:'el Taller de reparación',reactor:'el Reactor',nucleo:'el Núcleo central'};
+const ART_W={destornillador:'el Destornillador de plasma',martillo:'el Martillo neumático',laser:'la Pistola láser',llave:'la Llave magnética',soldador:'el Soplete de fusión',iman:'el Imán borra-memorias',cable:'el Cable de alta tensión',aspiradora:'la Aspiradora de agujero negro',pendrive:'el Pendrive virus'};
+const NUMS=['cero','uno','dos','tres','cuatro','cinco','seis'];
+const enR = id => 'en '+(ART_R[id]||NM(id));
+const aR  = id => { const t=ART_R[id]||NM(id); return t.startsWith('el ') ? 'al '+t.slice(3) : 'a '+t; };
+const conW= id => 'con '+(ART_W[id]||NM(id));
+function narrar(e){
+  const g=S.g; const by=pById(e.by), nb=by?by.name:'';
+  switch(e.type){
+    case 'inicio': return VOZ.say('¡Alerta roja! Lucas ha sido desconectado a bordo de la nave. El asesino está entre la tripulación. ¡Descubridlo!');
+    case 'turno':  return VOZ.say(`Es el turno de ${nb}.`);
+    case 'dado':   return VOZ.say(`${nb} saca un ${NUMS[e.dice]||e.dice}.`);
+    case 'mover':  return VOZ.say(e.room==='nucleo' ? `${nb} vuelve al Núcleo central, y pierde el turno.` : `${nb} vuela ${aR(e.room)}.`);
+    case 'sospecha': return VOZ.say(`${nb} sospecha de ${NM(e.sus)}, ${conW(e.wea)}, ${enR(e.room)}.`);
+    case 'refutado': { const rf=pById(e.ref); return VOZ.say(`${rf?rf.name:'Alguien'} le muestra una carta a ${nb}.`); }
+    case 'nadie':  return VOZ.say(`¡Nadie puede desmentir a ${nb}! ¿Se estará acercando a la verdad?`);
+    case 'fallo':  return VOZ.say(`${nb} acusa a ${NM(e.sus)}, ${conW(e.wea)}, ${enR(e.room)}... ¡y se equivoca! Queda fuera de la partida.`);
+    case 'fin': {
+      if (!g.sol) return;
+      const sol=`Fue ${NM(g.sol.sus)}, ${conW(g.sol.wea)}, ${enR(g.sol.room)}.`;
+      return VOZ.say(by ? (e.ok ? `¡Caso resuelto! ${sol} ¡Enhorabuena, ${nb}!` : `${nb} gana por ser el último en pie. ${sol}`) : `Nadie ha resuelto el caso. ${sol}`);
+    }
+  }
+}
+
 /* ═════════════ EVENTOS / CINEMÁTICAS ═════════════ */
 let evQ=[], evBusy=false;
 function handleEvents(g){
@@ -1356,6 +1405,7 @@ function hideOv(now){ const o=$('#ov'); if(!o) return; if(now){ o.remove(); retu
 const pById = id => S.g.players.find(p=>p.id===id);
 
 function showEv(e){
+  try{ narrar(e); }catch(_){}
   const g=S.g, me=g.me; const by=pById(e.by); const bc = by?ALL[by.sus].c:'#22e4ff';
   switch(e.type){
     case 'inicio':
@@ -1772,7 +1822,7 @@ const Admin = (()=>{
 })();
 
 /* ═════════════ AUTO-ACTUALIZACIÓN ═════════════ */
-const APP_V = '22';
+const APP_V = '23';
 async function checkVersion(){
   try{
     const r = await fetch('version.json?t='+Date.now(), {cache:'no-store'}); if(!r.ok) return;
