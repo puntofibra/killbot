@@ -603,7 +603,7 @@ function armFlips(root, snd=true){
 
 /* ═════════════ SONIDO (Web Audio) ═════════════ */
 const AU = {ctx:null, on: (localStorage.getItem('kb_snd') !== '0')};
-function ac(){ if(!AU.ctx){ try{ AU.ctx = new (window.AudioContext||window.webkitAudioContext)(); }catch(e){} } if(AU.ctx&&AU.ctx.state==='suspended') AU.ctx.resume(); return AU.ctx; }
+function ac(){ if(!AU.ctx){ try{ AU.ctx = new (window.AudioContext||window.webkitAudioContext)(); }catch(e){} } if(AU.ctx&&AU.ctx.state==='suspended'&&!document.hidden) AU.ctx.resume(); return AU.ctx; }
 function tone(f, d, type='sine', v=.12, f2=null, delay=0){
   if(!AU.on) return; const c = ac(); if(!c) return;
   const t = c.currentTime + delay, o = c.createOscillator(), g = c.createGain();
@@ -668,6 +668,7 @@ const MUS = (()=>{
   function hat(c,t,v){ const b=c.createBuffer(1,c.sampleRate*.05,c.sampleRate), a=b.getChannelData(0); for(let i=0;i<a.length;i++) a[i]=(Math.random()*2-1)*(1-i/a.length);
     const s=c.createBufferSource(), f=c.createBiquadFilter(), g=c.createGain(); f.type='highpass'; f.frequency.value=7000; g.gain.value=v; s.buffer=b; s.connect(f); f.connect(g); g.connect(master); s.start(t); }
   function sched(){
+    if(document.hidden) return;
     const c=ac(); if(!c) return;
     while(nextT < c.currentTime+0.25){
       const bar=Math.floor(step/16)%4, s=step%16, sec=Math.floor(step/64)%4, t=nextT, ch=CH[bar];
@@ -696,10 +697,17 @@ function musShould(){
   if(p==='1') return true; if(p==='0') return false;
   return g.musicPid===g.me;
 }
-function musSync(){ const menu=!S.code || S.screen==='menu' || S.screen==='login'; const want = menu ? (AU.on && musPref()!=='0') : musShould(); want ? MUS.start() : MUS.stop(); const b=$('#bMus'); if(b) b.style.opacity=MUS.on?1:.45; }
+function musSync(){ if(S.screen==='tvauth'){ MUS.stop(); return; } const menu=!S.code || S.screen==='menu' || S.screen==='login'; const want = menu ? (AU.on && musPref()!=='0') : musShould(); want ? MUS.start() : MUS.stop(); const b=$('#bMus'); if(b) b.style.opacity=MUS.on?1:.45; }
 function musToggle(){ try{ localStorage.setItem('kb_mus', MUS.on?'0':'1'); }catch(e){} ac(); musSync(); toast(MUS.on?'🎵 Música activada':'🎵 Música desactivada'); }
 document.addEventListener('pointerdown', ()=>{ if(!MUS.on) musSync(); });
-document.addEventListener('visibilitychange', ()=>{ const c=AU.ctx; if(!c) return; document.hidden ? c.suspend() : c.resume(); });
+/* en segundo plano no suena nada */
+function bgPause(){ const c=AU.ctx; if(c && c.state==='running') c.suspend(); }
+function bgResume(){ if(document.hidden) return; const c=AU.ctx; if(c && c.state==='suspended') c.resume(); musSync(); }
+document.addEventListener('visibilitychange', ()=>{ document.hidden ? bgPause() : bgResume(); });
+window.addEventListener('pagehide', bgPause);
+window.addEventListener('blur', ()=>setTimeout(()=>{ if(document.hidden || !document.hasFocus()) bgPause(); },300));
+window.addEventListener('focus', bgResume);
+document.addEventListener('freeze', bgPause);
 
 /* ═════════════ PANTALLA COMPLETA (navegador de TV, PC o móvil) ═════════════ */
 const FS = {
@@ -1557,6 +1565,7 @@ function showTvLogin(next){
 function tvAuthorize(q){
   const clean=()=>{ try{ history.replaceState(null,'',location.pathname); }catch(e){} };
   if(!USER) return showLogin(()=>tvAuthorize(q));
+  S.screen='tvauth'; MUS.stop();
   app.innerHTML=`<div class="screen"><div class="menu glass" style="padding:24px;text-align:center">
     <div style="font-size:64px">📺</div><h2 class="t">Conectar pantalla</h2>
     <div class="ptxt" id="taTxt">¿Quieres entrar en la TV con la cuenta de <b>${esc(USER.user.nombre)}</b>?</div>
@@ -1763,7 +1772,7 @@ const Admin = (()=>{
 })();
 
 /* ═════════════ AUTO-ACTUALIZACIÓN ═════════════ */
-const APP_V = '21';
+const APP_V = '22';
 async function checkVersion(){
   try{
     const r = await fetch('version.json?t='+Date.now(), {cache:'no-store'}); if(!r.ok) return;
