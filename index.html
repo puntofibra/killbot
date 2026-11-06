@@ -137,8 +137,11 @@ h2.t{font-family:Orbitron;font-weight:900;letter-spacing:2px;margin:0 0 14px;fon
 @keyframes spin{to{transform:rotate(360deg)}}
 .board svg.lines{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
 .lines .ringL{fill:none;stroke:rgba(34,228,255,.35);stroke-width:1.3;stroke-dasharray:2 1.5;animation:dash 6s linear infinite}
+.lines .chev{fill:none;stroke:#22e4ff;stroke-width:.8;stroke-linecap:round;stroke-linejoin:round;filter:drop-shadow(0 0 1px #22e4ff);opacity:.9}
+.lines .spoke{stroke:rgba(255,59,92,.35);stroke-width:.6;stroke-dasharray:1 2;animation:dashOut 1.5s linear infinite}
+@keyframes dashOut{to{stroke-dashoffset:-3}}
 .lines .tele{fill:none;stroke-width:.7;stroke-dasharray:1.2 1.2;animation:dash 2s linear infinite;opacity:.65}
-.lines .spoke{stroke:rgba(255,255,255,.07);stroke-width:.5}
+
 @keyframes dash{to{stroke-dashoffset:-20}}
 .room,.core{position:absolute;transform:translate(-50%,-50%);border-radius:22%;display:flex;align-items:center;justify-content:center;
   background:radial-gradient(circle at 50% 40%,color-mix(in srgb,var(--rc) 35%,#0b1328),#070b18 75%);
@@ -403,6 +406,27 @@ textarea.inp{resize:vertical;font-family:inherit}
 .fan em{font-style:normal;margin-left:6px;font-size:12px;color:var(--mut)}
 .tvSide .fan i{width:2.2vh;height:3.3vh;margin-left:-1.2vh}
 .tvSide .fan em{font-size:1.8vh}
+/* escena: sospechoso y arma dentro de la sala */
+.scene{position:relative;width:min(92vw,520px);aspect-ratio:1.07;margin:0 auto}
+.scene .sRoom img,.scene .sRoom .emo{width:100%;height:100%;object-fit:contain;filter:drop-shadow(0 0 24px var(--rc));animation:zoomIn .5s both}
+.scene .sRoom{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;font-size:120px}
+.scene .sSus{position:absolute;left:14%;bottom:10%;width:46%;height:66%;display:flex;align-items:flex-end;justify-content:center;animation:dropIn .6s .25s cubic-bezier(.2,1.4,.4,1) both}
+.scene .sSus img{max-width:100%;max-height:100%;object-fit:contain;filter:drop-shadow(0 6px 10px rgba(0,0,0,.7));animation:shake .5s 4 .9s}
+.scene .sWea{position:absolute;right:10%;bottom:16%;width:32%;height:36%;display:flex;align-items:center;justify-content:center;animation:dropIn .6s .5s cubic-bezier(.2,1.4,.4,1) both}
+.scene .sWea img{max-width:100%;max-height:100%;object-fit:contain;filter:drop-shadow(0 0 10px #ff9d2e) drop-shadow(0 4px 6px rgba(0,0,0,.7));animation:float 2.5s ease-in-out infinite}
+.scene .sWea .emo{font-size:60px}
+@keyframes dropIn{from{transform:translateY(-60vh) scale(.6);opacity:0}}
+/* ver sala en grande */
+.roomView{position:fixed;inset:0;z-index:60;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:20px;background:rgba(2,4,12,.92);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);animation:ovIn .25s both}
+.roomView.out{animation:ovOut .25s both}
+.rvX{position:absolute;top:max(14px,env(safe-area-inset-top));right:14px;width:46px;height:46px;border-radius:14px;background:rgba(255,59,92,.2);border:1px solid var(--red);font-size:22px;font-weight:900;box-shadow:0 0 14px rgba(255,59,92,.4)}
+.rvImg{position:relative;width:min(92vw,600px);aspect-ratio:1.07;display:flex;align-items:center;justify-content:center;font-size:140px}
+.rvImg>img{width:100%;height:100%;object-fit:contain;filter:drop-shadow(0 0 30px var(--rc));animation:zoomIn .45s both}
+.rvToks{position:absolute;left:0;right:0;bottom:6%;display:flex;flex-wrap:wrap;justify-content:center;gap:6px}
+.rvTok{display:flex;flex-direction:column;align-items:center;width:18%;animation:dropIn .5s both}
+.rvTok img,.rvTok .emo{width:100%;aspect-ratio:1;object-fit:contain;filter:drop-shadow(0 0 8px var(--c,#ff9d2e)) drop-shadow(0 3px 5px #000);font-size:34px}
+.rvTok span{font-family:Orbitron;font-size:9px;padding:2px 5px;border-radius:5px;background:rgba(0,0,0,.75);white-space:nowrap;margin-top:-6px}
+.room,.core{cursor:pointer}
 /* cartas que ya conoces: en gris */
 .pick .kcard.known{filter:grayscale(1) brightness(.5) contrast(.9);box-shadow:none!important}
 .pick .kcard.known.sel{filter:grayscale(.6) brightness(.8)}
@@ -488,8 +512,6 @@ const ROOMS = [
   {id:'taller',n:'Taller de reparación',e:'🛠️',c:'#ffd23f'},
   {id:'reactor',n:'Reactor',e:'☢️',c:'#ff3b5c'}
 ];
-const TELE = [[0,4],[2,6],[3,8]];
-const PASOS = [0,1,1,2,2,3,3];
 const ALL = {}, BASE_NM = {};
 SUS.forEach(x=>{ x.t='sus'; ALL[x.id]=x; });
 WEA.forEach(x=>{ x.t='wea'; x.c='#ff9d2e'; ALL[x.id]=x; });
@@ -653,7 +675,7 @@ function musShould(){
   const p=musPref(); if(p==='1') return true; if(p==='0') return false;
   return g.musicPid===g.me;
 }
-function musSync(){ if(!S.code || S.screen==='menu' || S.screen==='login'){ MUS.stop(); return; } musShould() ? MUS.start() : MUS.stop(); const b=$('#bMus'); if(b) b.style.opacity=MUS.on?1:.45; }
+function musSync(){ const menu=!S.code || S.screen==='menu' || S.screen==='login'; const want = menu ? (AU.on && musPref()!=='0') : musShould(); want ? MUS.start() : MUS.stop(); const b=$('#bMus'); if(b) b.style.opacity=MUS.on?1:.45; }
 function musToggle(){ try{ localStorage.setItem('kb_mus', MUS.on?'0':'1'); }catch(e){} ac(); musSync(); toast(MUS.on?'🎵 Música activada':'🎵 Música desactivada'); }
 document.addEventListener('pointerdown', ()=>{ if(!MUS.on) musSync(); });
 document.addEventListener('visibilitychange', ()=>{ const c=AU.ctx; if(!c) return; document.hidden ? c.suspend() : c.resume(); });
@@ -707,7 +729,7 @@ function clearSess(){ try{ localStorage.removeItem('kb_sess'); }catch(e){} }
 function logoHTML(){ return `<div class="logo">${FAILED.has('logo')?`<div class="logoTxt" data-t="KILLBOT">KILLBOT</div>`:`<img class="lg" src="${IMG}logo.png" onerror="this.outerHTML='<div class=&quot;logoTxt&quot; data-t=&quot;KILLBOT&quot;>KILLBOT</div>'">`}<div class="sub">ASESINATO EN LA NAVE KB-9</div></div>`; }
 
 function showMenu(){
-  S.screen='menu'; stopPoll(); MUS.stop(); if(USER) setTimeout(refreshUser,50);
+  S.screen='menu'; stopPoll(); setTimeout(musSync,0); if(USER) setTimeout(refreshUser,50);
   const s = loadSess();
   app.innerHTML = `<div class="screen"><div class="menu">
     ${logoHTML()}
@@ -716,9 +738,9 @@ function showMenu(){
     ${USER?`<div class="userChip"><span>👤 ${esc(USER.user.nombre)}</span><span class="cred" id="bCred">💎 <b>${USER.user.admin?'∞':(USER.user.creditos||0)}</b> créditos ➕</span><button id="bOut">Salir</button></div>`:''}
     ${s ? `<button class="btn gold" id="bCont">▶ Volver a la partida ${esc(s.code)}</button>` : ''}
     <button class="btn big green" id="bMov">📱 Crear partida solo móviles</button>
-    ${PUB.bots!==false?`<button class="btn gold" id="bSolo">🤖 Jugar solo contra bots</button>`:''}
     <button class="btn" id="bTv">📺 Crear partida en TV / PC</button>
     <button class="btn" id="bJoin">🔑 Unirme a una partida</button>
+    <button class="btn gold" id="bWeb">🌐 Web del creador</button>
     ${!USER?`<button class="btn ghost sm" id="bLog" style="align-self:center">👤 Iniciar sesión</button>`:''}
     <div class="row"><button class="btn ghost sm" id="bHow">📖 Cómo se juega</button><button class="btn ghost sm" id="bInst">📲 Instalar</button><button class="btn ghost sm" id="bShare">📤 Compartir</button></div>
     <div class="foot">FuturMovil · KILLBOT</div>
@@ -731,8 +753,8 @@ function showMenu(){
   if ($('#bCred')) $('#bCred').onclick = ()=>showComprar();
   if ($('#bLog')) $('#bLog').onclick = ()=>showLogin();
   $('#bTv').onclick = ()=>{ SFX.click(); create('tv',''); };
-  if ($('#bSolo')) $('#bSolo').onclick = ()=>{ SFX.click(); soloPick(); };
   $('#bJoin').onclick = ()=>{ SFX.click(); showJoin(''); };
+  $('#bWeb').onclick = ()=>{ SFX.click(); MUS.stop(); location.href='https://puntofibra.github.io/web/'; };
   $('#bHow').onclick = ()=>{ SFX.click(); howTo(); };
   $('#bShare').onclick = ()=>share(BASE, '🤖💀 Juega conmigo a KILLBOT, el cluedo espacial:');
 }
@@ -846,7 +868,7 @@ function howTo(){
   modal(`<h2 class="t">Cómo se juega</h2><div class="howto">
   <p>🚨 <b>Lucas</b>, el robot jefe de la nave KB-9, ha aparecido desguazado. Uno de los 9 tripulantes lo ha hecho, con una de las 9 armas y en una de las 9 salas. La solución está escondida en el <b>sobre secreto</b>.</p>
   <h3>🃏 TUS CARTAS</h3><p>Al empezar se reparten el resto de cartas. Lo que tienes en la mano <b>no</b> está en el sobre. Ve tachando en tu 📝 Libreta.</p>
-  <h3>🎲 TU TURNO</h3><p>Tira los propulsores: con 1-2 avanzas 1 sala, con 3-4 hasta 2 y con 5-6 hasta 3. Las líneas de colores son <b>teletransportadores</b> que cruzan la nave. Desde el Núcleo central llegas a cualquier sala.</p>
+  <h3>🎲 TU TURNO</h3><p>Desde el <b>Núcleo central</b> puedes ir a <b>cualquier sala</b>, saques lo que saques. Si estás en una sala, avanzas tantas salas como marque el dado <b>en el sentido de las agujas del reloj</b> (sigue las flechas), o vuelves al Núcleo, pero entonces pierdes el turno. Toca cualquier sala para verla en grande.</p>
   <h3>🔍 SOSPECHAR</h3><p>Al entrar en una sala, sospecha de un robot y un arma <b>en esa sala</b>. El robot sospechoso vuela hasta allí. El siguiente jugador que tenga alguna de esas cartas te enseñará una en secreto.</p>
   <h3>⚖️ ACUSAR</h3><p>Cuando lo tengas claro, acusa (en cualquier momento de tu turno). Si aciertas, ganas. Si fallas, quedas eliminado, aunque seguirás enseñando cartas.</p>
   <h3>📺 MODOS</h3><p><b>TV/PC:</b> la pantalla grande es el tablero y cada uno juega con su móvil. <b>Solo móviles:</b> un móvil crea la sala y los demás entran con el QR o el código; todos ven el tablero en su móvil.</p>
@@ -1024,11 +1046,10 @@ function roomXY(i){ const a = (-90 + i*40) * Math.PI/180; return {x:50+38*Math.c
 function locXY(loc){ if (loc==='nucleo') return {x:50,y:50}; const i=ROOMS.findIndex(r=>r.id===loc); return roomXY(i<0?0:i); }
 
 function buildBoard(el){
-  const teleCols = ['#ff3bd4','#ffd23f','#17ff5f'];
-  let svg = `<svg class="lines" viewBox="0 0 100 100"><circle class="ringL" cx="50" cy="50" r="38"/>`;
+  const RING='M50 12 A38 38 0 1 1 49.99 12';
+  let svg = `<svg class="lines" viewBox="0 0 100 100"><defs><path id="ringP" d="${RING}"/></defs><circle class="ringL" cx="50" cy="50" r="38"/>`;
   ROOMS.forEach((r,i)=>{ const p=roomXY(i); svg+=`<line class="spoke" x1="50" y1="50" x2="${p.x}" y2="${p.y}"/>`; });
-  TELE.forEach((t,k)=>{ const a=roomXY(t[0]), b=roomXY(t[1]); const mx=(a.x+b.x)/2, my=(a.y+b.y)/2; const cx=50+(mx-50)*.25, cy=50+(my-50)*.25;
-    svg+=`<path class="tele" d="M${a.x} ${a.y} Q${cx} ${cy} ${b.x} ${b.y}" stroke="${teleCols[k]}" style="filter:drop-shadow(0 0 1px ${teleCols[k]})"/>`; });
+  for(let k=0;k<18;k++) svg+=`<path class="chev" d="M-1.6 -1.6 L0.6 0 L-1.6 1.6"><animateMotion dur="18s" repeatCount="indefinite" rotate="auto" begin="${-k}s"><mpath href="#ringP"/></animateMotion></path>`;
   svg += `</svg>`;
   let h = svg + `<div class="core" data-room="nucleo">${pimg('sala_nucleo','🔴')}<div class="rname" style="bottom:-9%">Núcleo</div></div>`;
   ROOMS.forEach((r,i)=>{ const p=roomXY(i); h+=`<div class="room" data-room="${r.id}" style="left:${p.x}%;top:${p.y}%;--rc:${r.c}">${art(r.id)}<div class="rname">${r.n}</div></div>`; });
@@ -1036,7 +1057,9 @@ function buildBoard(el){
   WEA.forEach(w=>{ h+=`<div class="wtok" id="wt_${w.id}" style="left:50%;top:50%">${art(w.id)}</div>`; });
   h += `<div class="sobre" id="sobre">${flipHTML('', '', 0)}${flipHTML('', '', 0)}${flipHTML('', '', 0)}<b>SOBRE SECRETO</b></div>`;
   el.innerHTML = h;
-  el.onclick = e=>{ const r=e.target.closest('[data-room]'); if (r && r.classList.contains('reach')){ SFX.whoosh(); act('mover',{room:r.dataset.room}); } };
+  el.onclick = e=>{ const r=e.target.closest('[data-room]'); if(!r) return;
+    if (r.classList.contains('reach')){ SFX.whoosh(); act('mover',{room:r.dataset.room}); }
+    else showRoom(r.dataset.room); };
 }
 
 function updateBoard(){
@@ -1069,6 +1092,23 @@ function updateBoard(){
   });
 }
 
+function roomScene(room, sus, wea, cls=''){
+  return `<div class="scene ${cls}" style="--rc:${(ALL[room]||{}).c||'#22e4ff'}"><div class="sRoom">${pimg('sala_'+room, (ALL[room]||{}).e||'🔴')}</div>
+    ${sus?`<div class="sSus">${accImg(sus)}</div>`:''}${wea?`<div class="sWea">${art(wea)}</div>`:''}</div>`;
+}
+function showRoom(id){
+  const g=S.g; SFX.click();
+  const here=SUS.filter(s=>g && g.pos && g.pos[s.id]===id), wh=WEA.filter(w=>g && g.wpos && g.wpos[w.id]===id);
+  const w=document.createElement('div'); w.className='roomView';
+  w.innerHTML=`<button class="rvX">✕</button><h2 class="t">${NM(id)}</h2>
+    <div class="rvImg" style="--rc:${(ALL[id]||{}).c||'#ff3b5c'}">${pimg('sala_'+id,(ALL[id]||{}).e||'🔴')}
+      <div class="rvToks">${here.map(s=>`<div class="rvTok" style="--c:${s.c}">${art(s.id)}<span>${s.n}</span></div>`).join('')}${wh.map(x=>`<div class="rvTok w">${art(x.id)}<span>${x.n}</span></div>`).join('')}</div></div>
+    ${!here.length&&!wh.length?'<div class="ptxt" style="opacity:.7">Ahora mismo no hay nadie en esta sala</div>':''}
+    ${id==='nucleo'?'<div class="ptxt" style="font-size:14px;opacity:.75">Desde el Núcleo puedes ir a cualquier sala con cualquier número del dado. Si vuelves aquí, pierdes el turno.</div>':''}`;
+  fx.appendChild(w);
+  const close=()=>{ w.classList.add('out'); setTimeout(()=>w.remove(),250); };
+  w.querySelector('.rvX').onclick=close; w.onclick=e=>{ if(e.target===w) close(); };
+}
 function flashRoom(id){ const r=document.querySelector(`#board [data-room="${id}"]`); if(!r) return; r.classList.remove('flash'); void r.offsetWidth; r.classList.add('flash'); clearTimeout(r._ft); r._ft=setTimeout(()=>r.classList.remove('flash'),2500); }
 
 function phaseText(g, p){
@@ -1124,7 +1164,7 @@ function renderPanel(){
     if (me.summoned && g.pos[me.sus]!=='nucleo') h += `<button class="btn" id="bStay">📍 Quedarme en ${NM(g.pos[me.sus])} y sospechar</button>`;
     h += `<button class="btn red" id="bAcc">⚖️ Acusar</button>`;
   } else if (g.phase==='mover'){
-    h = `<div class="ptxt">Sacaste <span class="diceMini">${g.dice}</span> → avanza hasta <b>${PASOS[g.dice]} sala${PASOS[g.dice]>1?'s':''}</b>.<br>Toca una sala <b style="color:var(--lucas)">iluminada</b> del mapa.</div><button class="btn red sm" style="align-self:center" id="bAcc">⚖️ Acusar</button>`;
+    h = `<div class="ptxt">Sacaste <span class="diceMini">${g.dice}</span> → ${g.pos[me.sus]==='nucleo'?'desde el Núcleo puedes ir a <b>cualquier sala</b>':`avanza hasta <b>${g.dice} sala${g.dice>1?'s':''}</b> en el sentido de las flechas, o vuelve al <b>Núcleo</b> (pierdes el turno)`}.<br>Toca una sala <b style="color:var(--lucas)">iluminada</b>.</div><button class="btn red sm" style="align-self:center" id="bAcc">⚖️ Acusar</button>`;
   } else if (g.phase==='sospechar'){
     h = `<div class="ptxt">Estás en <b>${NM(g.pos[me.sus])}</b></div><button class="btn big" id="bSus">🔍 Lanzar sospecha</button><div class="row"><button class="btn ghost" id="bSkip">Saltar</button><button class="btn red" id="bAcc">⚖️ Acusar</button></div>`;
   } else if (g.phase==='refutar'){
@@ -1292,13 +1332,13 @@ function showEv(e){
     case 'dado':
       SFX.dice();
       ov(`<div class="dice3d"><div class="cube"><div class="f1">${e.dice}</div><div class="f2">${(e.dice%6)+1}</div><div class="f3">${((e.dice+1)%6)+1}</div><div class="f4">${((e.dice+2)%6)+1}</div><div class="f5">${((e.dice+3)%6)+1}</div><div class="f6">${((e.dice+4)%6)+1}</div></div></div>
-        <p><b>${esc(by?by.name:'')}</b> saca un <b>${e.dice}</b> → avanza ${PASOS[e.dice]} sala${PASOS[e.dice]>1?'s':''}</p>`, bc);
+        <p><b>${esc(by?by.name:'')}</b> saca un <b>${e.dice}</b></p>`, bc);
       return isTV()||e.by!==me ? 2300 : 1900;
     case 'mover':
       SFX.whoosh(); setTimeout(()=>flashRoom(e.room),300); return 600;
     case 'sospecha':
       SFX.sus(); setTimeout(()=>flashRoom(e.room),400);
-      ov(`<h1>🔍 SOSPECHA</h1><div class="big shake">${accImg(e.sus)}</div><div class="duo">${cardHTML(e.wea,'lg')}${cardHTML(e.room,'lg')}</div>
+      ov(`<h1>🔍 SOSPECHA</h1>${roomScene(e.room,e.sus,e.wea)}
         <p><b>${esc(by?by.name:'')}</b> cree que fue <b>${NM(e.sus)}</b><br>con <b>${NM(e.wea)}</b> en <b>${NM(e.room)}</b></p>`, bc);
       return 4200;
     case 'refutado': {
@@ -1637,7 +1677,7 @@ const Admin = (()=>{
 })();
 
 /* ═════════════ AUTO-ACTUALIZACIÓN ═════════════ */
-const APP_V = '17';
+const APP_V = '18';
 async function checkVersion(){
   try{
     const r = await fetch('version.json?t='+Date.now(), {cache:'no-store'}); if(!r.ok) return;

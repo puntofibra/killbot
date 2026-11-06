@@ -540,12 +540,12 @@ function dist_(from, to) {
   });
   return d;
 }
+/* Desde el Núcleo: cualquier sala. Desde una sala: hasta 'pasos' salas en sentido horario, o volver al Núcleo */
 function reach_(pos, pasos) {
-  var out = [];
-  ROOMS.concat(['nucleo']).forEach(function (r) {
-    var d = dist_(pos, r);
-    if (d >= 1 && d <= pasos) out.push(r);
-  });
+  if (pos === 'nucleo') return ROOMS.slice();
+  var a = ROOMS.indexOf(pos), out = [];
+  for (var k = 1; k <= Math.min(pasos, 8); k++) out.push(ROOMS[(a + k) % 9]);
+  out.push('nucleo');
   return out;
 }
 
@@ -777,10 +777,10 @@ function doAct_(g, p, act, d) {
   if (act === 'tirar') {
     if (g.phase !== 'tirar') err_('Ya has tirado');
     g.dice = 1 + rnd_(6);
-    g.reach = reach_(g.pos[p.sus], PASOS[g.dice]);
+    g.reach = reach_(g.pos[p.sus], g.dice);
     g.phase = 'mover';
     ev_(g, 'dado', { by: p.id, dice: g.dice });
-    log_(g, '🎲 ' + p.name + ' saca un ' + g.dice + ' (avanza hasta ' + PASOS[g.dice] + ' sala' + (PASOS[g.dice] > 1 ? 's' : '') + ')');
+    log_(g, '🎲 ' + p.name + ' saca un ' + g.dice + (g.pos[p.sus] === 'nucleo' ? ' (desde el Núcleo puede ir a cualquier sala)' : ' (avanza hasta ' + g.dice + ' sala' + (g.dice > 1 ? 's' : '') + ' o vuelve al Núcleo)'));
   } else if (act === 'quedarse') {
     if (g.phase !== 'tirar' || !p.summoned || g.pos[p.sus] === 'nucleo') err_('No puedes quedarte');
     p.summoned = false;
@@ -792,9 +792,10 @@ function doAct_(g, p, act, d) {
     g.pos[p.sus] = d.room;
     p.summoned = false;
     g.reach = [];
-    g.phase = d.room === 'nucleo' ? 'accion' : 'sospechar';
     ev_(g, 'mover', { by: p.id, room: d.room });
     log_(g, '🚀 ' + p.name + ' vuela a ' + nm_(d.room));
+    if (d.room === 'nucleo') { log_(g, '🔴 ' + p.name + ' se recarga en el Núcleo y pierde el turno'); next_(g); return; }
+    g.phase = 'sospechar';
   } else if (act === 'sospechar') {
     if (g.phase !== 'sospechar') err_('Ahora no puedes sospechar');
     if (SUS.indexOf(d.sus) < 0 || WEA.indexOf(d.wea) < 0) err_('Elige sospechoso y arma');
