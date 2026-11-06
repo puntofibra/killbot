@@ -670,15 +670,31 @@ const MUS = (()=>{
 })();
 function musPref(){ try{ return localStorage.getItem('kb_mus'); }catch(e){ return null; } }
 function musShould(){
-  const g=S.g; if(!g || !g.me || !AU.on) return false;
+  const g=S.g; if(!g || !AU.on) return false;
   if (g.status!=='lobby' && g.status!=='playing' && g.status!=='ended') return false;
-  const p=musPref(); if(p==='1') return true; if(p==='0') return false;
+  const p=musPref();
+  if (g.modo==='tv') return !g.me ? p!=='0' : p==='1';   // en modo TV la música sale por la tele
+  if (!g.me) return false;
+  if(p==='1') return true; if(p==='0') return false;
   return g.musicPid===g.me;
 }
 function musSync(){ const menu=!S.code || S.screen==='menu' || S.screen==='login'; const want = menu ? (AU.on && musPref()!=='0') : musShould(); want ? MUS.start() : MUS.stop(); const b=$('#bMus'); if(b) b.style.opacity=MUS.on?1:.45; }
 function musToggle(){ try{ localStorage.setItem('kb_mus', MUS.on?'0':'1'); }catch(e){} ac(); musSync(); toast(MUS.on?'🎵 Música activada':'🎵 Música desactivada'); }
 document.addEventListener('pointerdown', ()=>{ if(!MUS.on) musSync(); });
 document.addEventListener('visibilitychange', ()=>{ const c=AU.ctx; if(!c) return; document.hidden ? c.suspend() : c.resume(); });
+
+/* ═════════════ PANTALLA COMPLETA (navegador de TV, PC o móvil) ═════════════ */
+const FS = {
+  el: document.documentElement,
+  on(){ return !!(document.fullscreenElement||document.webkitFullscreenElement); },
+  can(){ return !!(this.el.requestFullscreen||this.el.webkitRequestFullscreen) && !isStandaloneFS(); },
+  go(){ if(this.on()||!this.can()) return; try{ const r=(this.el.requestFullscreen||this.el.webkitRequestFullscreen).call(this.el,{navigationUI:'hide'}); if(r&&r.catch) r.catch(()=>{}); }catch(e){} },
+  exit(){ try{ (document.exitFullscreen||document.webkitExitFullscreen).call(document); }catch(e){} }
+};
+function isStandaloneFS(){ return matchMedia('(display-mode: standalone)').matches || matchMedia('(display-mode: fullscreen)').matches || navigator.standalone; }
+let fsOff=false; try{ fsOff = sessionStorage.getItem('kb_nofs')==='1'; }catch(e){}
+['pointerdown','keydown','touchend'].forEach(ev=>document.addEventListener(ev, e=>{ if(!fsOff && !(e.target.closest && e.target.closest('#bWeb,#bFs'))) FS.go(); }, true));
+function toggleFs(){ if(FS.on()){ fsOff=true; try{sessionStorage.setItem('kb_nofs','1');}catch(e){} FS.exit(); } else { fsOff=false; try{sessionStorage.removeItem('kb_nofs');}catch(e){} FS.go(); } }
 
 /* ═════════════ ESTRELLAS ═════════════ */
 (function(){
@@ -1036,6 +1052,7 @@ function buildGame(){
     $('#bMenu').onclick = ()=>modal(`<h2 class="t">Menú</h2><div style="display:flex;flex-direction:column;gap:10px">
       <button class="btn" onclick="closeModal();howTo()">📖 Cómo se juega</button>
       <button class="btn" onclick="share(joinUrl(S.code),'Partida KILLBOT ' + S.code + ':')">📤 Compartir sala</button>
+      <button class="btn" id="bFs" onclick="toggleFs();closeModal()">⛶ Pantalla completa sí / no</button>
       <button class="btn red" onclick="kbConfirm('Si sales, la partida seguirá sin ti.',{title:'¿Salir de la partida?',icon:'🚪',ok:'Salir',danger:true,color:'var(--red)'}).then(v=>v&&exitGame())">🚪 Salir al menú</button>
       <button class="btn ghost" onclick="closeModal()">Cerrar</button></div>`);
   }
@@ -1677,7 +1694,7 @@ const Admin = (()=>{
 })();
 
 /* ═════════════ AUTO-ACTUALIZACIÓN ═════════════ */
-const APP_V = '18';
+const APP_V = '19';
 async function checkVersion(){
   try{
     const r = await fetch('version.json?t='+Date.now(), {cache:'no-store'}); if(!r.ok) return;
