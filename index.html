@@ -447,6 +447,25 @@ textarea.inp{resize:vertical;font-family:inherit}
 .pick .kcard.known{filter:grayscale(1) brightness(.5) contrast(.9);box-shadow:none!important}
 .pick .kcard.known.sel{filter:grayscale(.6) brightness(.8)}
 .kTag{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) rotate(-18deg);padding:3px 8px;border:2px solid #fff;border-radius:6px;font-family:Orbitron;font-weight:900;font-size:11px;letter-spacing:2px;color:#fff;background:rgba(0,0,0,.55);z-index:3;pointer-events:none}
+/* chispazos de cortocircuito */
+.b1>img{position:relative;z-index:2}
+.zap{position:absolute;width:0;height:0;z-index:4;pointer-events:none}
+.zap:before{content:"";position:absolute;left:-9px;top:-9px;width:18px;height:18px;border-radius:50%;background:radial-gradient(#fff 0 20%,#fff59a 35%,rgba(120,255,240,.6) 55%,transparent 72%);opacity:0;animation:zapFlash var(--d) var(--w) infinite}
+.zap i{position:absolute;left:-1.5px;top:-1.5px;width:3px;height:3px;border-radius:50%;background:#fff;box-shadow:0 0 4px #fff59a,0 0 8px #ffd23f;opacity:0;animation:zapSpark var(--d) var(--w) infinite}
+.zap i:nth-child(even){width:2px;height:2px;background:#bffaff;box-shadow:0 0 5px #22e4ff}
+@keyframes zapFlash{0%,100%{opacity:0;transform:scale(.4)}2%{opacity:1;transform:scale(1.2)}5%{opacity:.3}7%{opacity:.9;transform:scale(.8)}11%{opacity:0}}
+@keyframes zapSpark{0%{opacity:0;transform:translate(0,0)}2%{opacity:1}16%{opacity:0;transform:translate(var(--dx),calc(var(--dy) + 6px))}100%{opacity:0;transform:translate(var(--dx),var(--dy))}}
+/* propulsores averiados que intentan encenderse */
+.noz{position:absolute;height:0;z-index:1;pointer-events:none;transform:rotate(var(--r));transform-origin:0 0}
+.noz .nf{position:absolute;left:0;top:-17px;width:100%;height:34px;opacity:0;transform-origin:0 50%;animation:sputter var(--d) var(--w) infinite}
+.noz .nf i{position:absolute;left:0;height:100%;border-radius:40% 70% 70% 40%/50%;background:radial-gradient(ellipse at 15% 50%,#fff 0 14%,#b8ffcf 24%,#17ff5f 48%,rgba(255,150,40,.7) 70%,transparent 80%);mix-blend-mode:screen;filter:blur(.6px)}
+.noz .nf i:nth-child(1){width:100%;top:0;animation:flick .09s infinite alternate}
+.noz .nf i:nth-child(2){width:70%;top:20%;height:60%;animation:flick .07s infinite alternate-reverse}
+.noz .nf i:nth-child(3){width:45%;top:30%;height:40%;background:radial-gradient(ellipse at 10% 50%,#fff 0 30%,#d8fff0 55%,transparent 75%)}
+@keyframes flick{from{transform:scaleX(.85) scaleY(1.05)}to{transform:scaleX(1.1) scaleY(.9)}}
+@keyframes sputter{0%,34%{opacity:0;transform:scaleX(.2)}36%{opacity:.9;transform:scaleX(.55)}39%{opacity:0;transform:scaleX(.3)}44%{opacity:.7;transform:scaleX(.4)}46%{opacity:0}62%{opacity:0;transform:scaleX(.3)}64%{opacity:1;transform:scaleX(1)}70%{opacity:.85;transform:scaleX(.8)}72%{opacity:.2;transform:scaleX(.5)}74%{opacity:.95;transform:scaleX(.95)}79%{opacity:0;transform:scaleX(.3)}100%{opacity:0}}
+.noz .puff{position:absolute;left:40%;top:-10px;width:20px;height:20px;border-radius:50%;background:radial-gradient(rgba(190,200,210,.6),transparent 70%);opacity:0;animation:puff var(--d) var(--w) infinite}
+@keyframes puff{0%,78%{opacity:0;transform:translate(0,0) scale(.5)}82%{opacity:.75}100%{opacity:0;transform:translate(30px,-25px) scale(2.6)}}
 /* avisos */
 .seenBy{text-align:center;font-size:11px;color:var(--mut);margin-top:3px;font-family:Orbitron}
 .kbc{position:fixed;inset:0;z-index:95;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(0,0,0,.72);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);animation:ovIn .2s both}
@@ -581,7 +600,21 @@ function botFx(id){ const x=ALL[id], f=FLAMES[id]; const art=(i)=>window.art(i,1
   return `<div class="bot" style="--fc:${x.c}">${art(id)}${fl}</div>`; }
 const accImg = id => pimg('acusado_'+id, robotSVG(ALL[id].c));
 /* Lucas roto con chispas y humo */
+/* Lucas destrozado (victima_1): chispazos en los cables rotos y propulsores que intentan encenderse */
+const ZAPS = [ // x%, y%, duración s, retardo s
+  [28,49,2.3,0],[31,57,3.1,1.2],[85,46,2.7,.6],[86,36,3.6,2.1],[32,82,2.9,1.7],[35,87,3.4,.3],[48,18,4.1,2.6],[44,22,3.8,1]];
+const NOZ = [ // x%, y%, giro, ancho%, duración, retardo
+  [85.5,64,12,15,3.4,0],[79.5,77,38,14,4.6,1.4]];
+function zapHTML(z){ let h=''; const ang=[-80,-40,-10,20,50,95,140,-140];
+  ang.forEach((a,k)=>{ const r=14+((k*7)%10); h+=`<i style="--dx:${Math.cos(a*Math.PI/180)*r}px;--dy:${Math.sin(a*Math.PI/180)*r}px"></i>`; });
+  return `<span class="zap" style="left:${z[0]}%;top:${z[1]}%;--d:${z[2]}s;--w:${z[3]}s">${h}</span>`; }
+function nozHTML(n){ return `<span class="noz" style="left:${n[0]}%;top:${n[1]}%;width:${n[3]}%;--r:${n[2]}deg;--d:${n[4]}s;--w:${n[5]}s"><span class="nf"><i></i><i></i><i></i></span><b class="puff"></b></span>`; }
 function brokenFx(n){
+  if (n===1){
+    let fx=ZAPS.map(zapHTML).join('')+NOZ.map(nozHTML).join('');
+    fx+=`<i class="sm" style="left:44%;top:22%"></i><i class="sm" style="left:58%;top:28%;animation-delay:1.6s"></i>`;
+    return `<div class="broken b1">${fx}${lucas(1)}</div>`;
+  }
   let fx=''; const sp=[[30,40,-40,-50],[62,30,50,-60],[48,55,-20,-70],[70,58,60,-30],[25,62,-55,-20]];
   sp.forEach((p,k)=>fx+=`<i class="sp" style="left:${p[0]}%;top:${p[1]}%;--dx:${p[2]}px;--dy:${p[3]}px;animation-delay:${k*.31}s"></i>`);
   fx+=`<i class="sm" style="left:40%;top:25%"></i><i class="sm" style="left:58%;top:30%;animation-delay:1.6s"></i>`;
@@ -1847,7 +1880,7 @@ const Admin = (()=>{
 })();
 
 /* ═════════════ AUTO-ACTUALIZACIÓN ═════════════ */
-const APP_V = '25';
+const APP_V = '26';
 async function checkVersion(){
   try{
     const r = await fetch('version.json?t='+Date.now(), {cache:'no-store'}); if(!r.ok) return;
