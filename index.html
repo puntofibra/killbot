@@ -1315,36 +1315,51 @@ const Admin = (()=>{
   const hayNfc = 'NDEFReader' in window;
   const setAdm = t=>{ ADM=t; try{ sessionStorage.setItem('kb_adm', t); }catch(e){} };
 
-  async function leerLlave(onSerial){
-    const r = new NDEFReader(); const ctrl = new AbortController();
-    await r.scan({signal:ctrl.signal});
-    return new Promise((res, rej)=>{
-      r.onreading = ev=>{ ctrl.abort(); res(String(ev.serialNumber||'').replace(/:/g,'')); };
-      r.onreadingerror = ()=>rej(new Error('No se pudo leer la llave. Prueba otra vez.'));
-      setTimeout(()=>{ ctrl.abort(); rej(new Error('Tiempo agotado')); }, 30000);
-    });
+  let nfcCtrl=null, nfcBusy=false;
+  function pararNfc(){ if(nfcCtrl){ try{ nfcCtrl.abort(); }catch(e){} nfcCtrl=null; } nfcBusy=false; }
+  /* Lector continuo: arranca solo al abrir; mientras está activo Chrome se queda la llave
+     y Android NO ejecuta lo que lleva grabado (enlace, etc.). Solo usamos el número de serie. */
+  async function escuchar(onSerial, txt){
+    pararNfc();
+    const t = txt || (()=>{});
+    try{
+      nfcCtrl = new AbortController();
+      const r = new NDEFReader();
+      await r.scan({signal:nfcCtrl.signal});
+      t('📡 Esperando la llave… acércala a la parte de atrás del móvil');
+      r.onreadingerror = ()=>{ if(!nfcBusy) t('No pude leer la llave. Vuelve a acercarla.'); };
+      r.onreading = async ev=>{
+        if (nfcBusy) return; nfcBusy=true; vib(80);
+        const serial = String(ev.serialNumber||'').replace(/:/g,'');
+        try{ await onSerial(serial); pararNfc(); }
+        catch(e){ toast(errMsg(e),1); t('Vuelve a acercar la llave'); nfcBusy=false; }
+      };
+      return true;
+    }catch(e){
+      pararNfc();
+      t('Toca el botón para activar el lector NFC');
+      return false;
+    }
   }
 
   function abrir(){
     SFX.click();
     if (ADM) return panel();
-    clearInterval(qrT);
+    clearInterval(qrT); pararNfc();
     const m = modal(`<div style="text-align:center">
       <div class="nfcAnim">${NFC_SVG}<i></i><i></i></div>
       <h2 class="t" style="margin-top:6px">Acceso restringido</h2>
-      ${hayNfc ? `<div class="ptxt" id="aTxt">Acerca tu llave a la parte de atrás del móvil</div><button class="btn green" id="bNfc">🔑 Leer llave NFC</button>`
+      ${hayNfc ? `<div class="ptxt" id="aTxt">Activando lector…</div><button class="btn green hidden" id="bNfc">🔑 Activar lector NFC</button>`
                : `<div class="ptxt">Escanea este QR con tu móvil y acerca tu llave</div><div class="qr" id="aQr" style="margin:12px auto;width:max-content"></div>`}
-      <div class="sep"><span>o código de Google Authenticator</span></div>
-      <input class="inp code" id="aTotp" inputmode="numeric" maxlength="6" placeholder="000000" style="letter-spacing:8px;font-size:28px">
-      <button class="btn ghost" onclick="closeModal()" style="margin-top:10px">Cerrar</button></div>`, ()=>clearInterval(qrT));
-    $('#aTotp').oninput = async e=>{ const v=e.target.value.replace(/\D/g,''); e.target.value=v;
-      if (v.length===6){ try{ const r=await call('admTotp',{codigo:v}); setAdm(r.adm); clearInterval(qrT); panel(); }catch(er){ toast(errMsg(er),1); e.target.value=''; } } };
-    if (hayNfc) $('#bNfc').onclick = async()=>{
-      $('#aTxt').textContent='📡 Esperando la llave…';
-      try{ const serial = await leerLlave(); const r = await call('admLlave',{llave:serial, ses:USER&&USER.ses});
-        if (r.nueva) toast('🔑 Llave registrada como llave de admin'); setAdm(r.adm); SFX.reveal(); panel(); }
-      catch(e){ toast(errMsg(e),1); $('#aTxt').textContent='Acerca tu llave a la parte de atrás del móvil'; }
-    };
+      <button class="btn ghost" id="aCerrar" style="margin-top:10px">Cerrar</button></div>`, ()=>{ clearInterval(qrT); pararNfc(); });
+    $('#aCerrar').onclick = ()=>{ clearInterval(qrT); pararNfc(); closeModal(); };
+    if (hayNfc){
+      const txt = t=>{ const e=$('#aTxt'); if(e) e.textContent=t; const b=$('#bNfc'); if(b) b.classList.toggle('hidden', !/Toca el botón/.test(t)); };
+      const ok = async serial=>{ const r = await call('admLlave',{llave:serial, ses:USER&&USER.ses});
+        if (r.nueva) toast('🔑 Llave registrada como llave de admin'); setAdm(r.adm); SFX.reveal(); panel(); };
+      escuchar(ok, txt);
+      $('#bNfc').onclick = ()=>escuchar(ok, txt);
+    }
     else call('admQr').then(r=>{
       drawQR($('#aQr'), r.url, 180);
       qrT = setInterval(async()=>{ const s = await api('admQrEstado',{q:r.q});
@@ -1356,15 +1371,15 @@ const Admin = (()=>{
   function autorizar(q){
     app.innerHTML = `<div class="screen"><div class="menu glass" style="padding:24px;text-align:center">
       <div class="nfcAnim">${NFC_SVG}<i></i><i></i></div><h2 class="t">Autorizar ordenador</h2>
-      <div class="ptxt" id="aTxt">${hayNfc?'Pulsa el botón y acerca tu llave NFC para abrir el panel en el ordenador':'Este móvil no puede leer NFC. Usa un Android con Chrome.'}</div>
-      ${hayNfc?'<button class="btn big green" id="bNfc">🔑 Leer llave</button>':''}
+      <div class="ptxt" id="aTxt">${hayNfc?'Activando lector…':'Este móvil no puede leer NFC. Usa un Android con Chrome.'}</div>
+      ${hayNfc?'<button class="btn big green hidden" id="bNfc">🔑 Activar lector NFC</button>':''}
       <button class="btn ghost" onclick="history.replaceState(null,\'\',location.pathname);showMenu()">Cancelar</button></div></div>`;
-    if (hayNfc) $('#bNfc').onclick = async()=>{
-      $('#aTxt').textContent='📡 Esperando la llave…';
-      try{ const serial = await leerLlave(); await call('admAutorizar',{q, llave:serial, ses:USER&&USER.ses});
-        SFX.reveal(); $('#aTxt').innerHTML='✅ <b>Ordenador autorizado.</b> Ya puedes cerrar esto.'; $('#bNfc').remove(); }
-      catch(e){ toast(errMsg(e),1); $('#aTxt').textContent='Vuelve a intentarlo'; }
-    };
+    if (!hayNfc) return;
+    const txt = t=>{ const e=$('#aTxt'); if(e) e.textContent=t; const b=$('#bNfc'); if(b) b.classList.toggle('hidden', !/Toca el botón/.test(t)); };
+    const ok = async serial=>{ await call('admAutorizar',{q, llave:serial, ses:USER&&USER.ses});
+      SFX.reveal(); $('#aTxt').innerHTML='✅ <b>Ordenador autorizado.</b> Ya puedes cerrar esto.'; };
+    escuchar(ok, txt);
+    $('#bNfc').onclick = ()=>escuchar(ok, txt);
   }
 
   async function adm(op, d){
@@ -1427,10 +1442,6 @@ const Admin = (()=>{
     if (pest==='seguridad'){
       h += `<div class="lbl">Llaves NFC</div><div class="ptxt" style="font-size:15px">${D.llaves} llave(s) registrada(s). La primera se registra sola al entrar con tu llave estando logueado con ${esc(CFG.ADMIN)}.</div>
         <button class="btn red sm" id="aLlaves">Borrar todas las llaves</button>
-        <div class="lbl" style="margin-top:16px">Google Authenticator</div>
-        <div class="ptxt" style="font-size:15px">${D.totp?'✅ Activado':'❌ No configurado'}</div>
-        <div id="totpBox"></div>
-        <div class="row"><button class="btn sm" id="aTotpN">${D.totp?'Generar uno nuevo':'Activar'}</button>${D.totp?'<button class="btn sm red" id="aTotpQ">Desactivar</button>':''}</div>
         <button class="btn ghost" style="margin-top:16px" id="aOut">🚪 Cerrar sesión de admin</button>`;
     }
     h += `</div>`;
@@ -1450,7 +1461,7 @@ const Admin = (()=>{
     });
     box.querySelectorAll('[data-bloq]').forEach(b=>b.onclick=async()=>{ try{ await adm('bloquear',{email:b.dataset.bloq, bloq:b.dataset.v==='1'}); D=await adm('resumen'); pinta(); }catch(e){ if(e.message!=='ADMIN') toast(errMsg(e),1); } });
     on('#aLlaves', async()=>{ if(!confirm('¿Borrar todas las llaves? Tendrás que registrar la tuya otra vez.')) return; try{ await adm('llavesBorrar'); D.llaves=0; pinta(); }catch(e){} });
-    on('#aTotpN', async()=>{ try{ const r=await adm('totpNuevo'); D.totp=true; pinta();
+    on('#aTotpNx', async()=>{ try{ const r=await adm('totpNuevo'); D.totp=true; pinta();
       $('#totpBox').innerHTML=`<div class="ptxt" style="font-size:14px">Escanéalo con Google Authenticator:</div><div class="qr" id="tQr" style="margin:10px auto;width:max-content"></div><div class="ptxt" style="font-size:13px;word-break:break-all">Clave: <b>${r.secreto}</b></div>`;
       drawQR($('#tQr'), r.url, 170); }catch(e){} });
     on('#aTotpQ', async()=>{ try{ await adm('totpQuitar'); D.totp=false; pinta(); }catch(e){} });
@@ -1461,7 +1472,7 @@ const Admin = (()=>{
 })();
 
 /* ═════════════ AUTO-ACTUALIZACIÓN ═════════════ */
-const APP_V = '10';
+const APP_V = '11';
 async function checkVersion(){
   try{
     const r = await fetch('version.json?t='+Date.now(), {cache:'no-store'}); if(!r.ok) return;

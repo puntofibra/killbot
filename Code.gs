@@ -71,7 +71,6 @@ function manejar_(p) {
       case 'reiniciar':   r = reiniciar(p.code, p.tk); break;
       /* admin */
       case 'admLlave':    r = adminLlave_(p); break;
-      case 'admTotp':     r = adminTotp_(p); break;
       case 'admQr':       r = adminQr_(); break;
       case 'admQrEstado': r = adminQrEstado_(p); break;
       case 'admAutorizar':r = adminAutorizar_(p); break;
