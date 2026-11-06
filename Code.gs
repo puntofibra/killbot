@@ -55,11 +55,15 @@ function manejar_(p) {
       case 'entrar':      r = entrar_(p); break;
       case 'google':      r = google_(p); break;
       case 'yo':          r = { user: pubUser_(sesion_(p.ses)) }; break;
+      case 'comprar':     r = comprar_(p); break;
+      case 'banco':       r = bancoApi_(p); break;
       case 'salir':       r = salir_(p); break;
       case 'recuperar':   r = recuperar_(p); break;
       case 'restablecer': r = restablecer_(p); break;
       /* sala */
-      case 'crear':       var u = sesion_(p.ses); r = crearSala(p.modo, u.nombre, u); break;
+      case 'crear':       var u = sesion_(p.ses);
+        if (u.email !== ADMIN_EMAIL && saldo_(u.email) < 1) throw new Error('SIN_CREDITOS');
+        r = crearSala(p.modo, u.nombre, u); break;
       case 'unirse':      r = unirse(p.code, p.nombre); break;
       case 'elegir':      r = elegirPersonaje(p.code, p.tk, p.sus); break;
       case 'nombre':      r = cambiarNombre(p.code, p.tk, p.nombre); break;
@@ -148,12 +152,13 @@ function nuevaSesion_(sh, i, row) {
   row[U.Ultimo] = new Date();
   guardaFila_(sh, i, row);
   CacheService.getScriptCache().put('ses_' + t, row[U.Email], 21600);
+  try { bancoBienvenida_(row[U.Email]); } catch (e) { }
   return { ses: t, user: pubUser_(userObj_(row)) };
 }
 function userObj_(row) {
   return { email: row[U.Email], nombre: row[U.Nombre], partidas: Number(row[U.Partidas] || 0), bloqueado: !!row[U.Bloqueado] };
 }
-function pubUser_(u) { return { email: u.email, nombre: u.nombre, partidas: u.partidas, admin: u.email === ADMIN_EMAIL }; }
+function pubUser_(u) { return { email: u.email, nombre: u.nombre, partidas: u.partidas, admin: u.email === ADMIN_EMAIL, creditos: saldo_(u.email) }; }
 
 function sesion_(t) {
   t = String(t || '');
@@ -384,7 +389,8 @@ function admin_(p) {
     return {
       ajustes: c.ajustes, cartas: c.cartas, activas: activas.reverse(), stats: stats,
       usuarios: f.rows.map(function (r) { return { email: r[U.Email], nombre: r[U.Nombre], partidas: Number(r[U.Partidas] || 0), google: !!r[U.Google], bloq: !!r[U.Bloqueado], ultimo: r[U.Ultimo] }; }),
-      llaves: llaves_().length, totp: !!PropertiesService.getScriptProperties().getProperty('totp')
+      llaves: llaves_().length, totp: !!PropertiesService.getScriptProperties().getProperty('totp'),
+      saldos: saldos_(), pedidos: pedidosPend_()
     };
   }
   if (op === 'ajustes') {
@@ -424,6 +430,24 @@ function admin_(p) {
       if (d.bloq) f.sh.getRange(i + 2, U.Tokens + 1).setValue('[]');
       return {};
     });
+  }
+  if (op === 'pedido') {
+    return lockU_(function () {
+      var sh = pedSh_(), n = sh.getLastRow(); if (n < 2) err_('Pedido no encontrado');
+      var v = sh.getRange(2, 1, n - 1, 7).getValues();
+      for (var i = 0; i < v.length; i++) if (String(v[i][0]) === String(d.id)) {
+        if (v[i][5] !== 'PENDIENTE') err_('Ese pedido ya está ' + String(v[i][5]).toLowerCase());
+        if (d.ok) bancoMover_(v[i][2], Number(v[i][3]), APP_NAME, 'Compra ' + v[i][0] + ' (' + v[i][4] + ' €)');
+        sh.getRange(i + 2, 6, 1, 2).setValues([[d.ok ? 'PAGADO' : 'CANCELADO', new Date()]]);
+        return { pedidos: pedidosPend_(), saldos: saldos_() };
+      }
+      err_('Pedido no encontrado');
+    });
+  }
+  if (op === 'darCreditos') {
+    var em = limpiaEmail_(d.email), cant = Math.round(Number(d.cant) || 0);
+    if (!emailOk_(em) || !cant) err_('Pon un correo y una cantidad');
+    return lockU_(function () { bancoMover_(em, cant, APP_NAME, String(d.motivo || 'Ajuste del admin').slice(0, 80)); return { saldos: saldos_() }; });
   }
   if (op === 'totpNuevo') {
     var s = base32Nuevo_();
@@ -632,6 +656,7 @@ function empezar(code, token) {
     var g = load_(code); if (!g) err_('La partida ya no existe');
     if (g.host !== token) err_('Solo el anfitrión puede empezar');
     if (g.players.length < 2) err_('Hacen falta al menos 2 jugadores (puedes añadir bots)');
+    if (g.hostEmail && g.hostEmail !== ADMIN_EMAIL) bancoMover_(g.hostEmail, -1, APP_NAME, 'Partida ' + g.code);
     deal_(g);
     save_(g);
     return view_(g, token);
@@ -947,4 +972,94 @@ function botStep_(g) {
     next_(g);
   }
   g.lastAct = Date.now();
+}
+
+
+/* ═════════════════ BANCO DE CRÉDITOS (compartido entre juegos) ═════════════════
+   Los créditos van por correo: el mismo correo tiene el mismo saldo en todos los juegos
+   (KILLBOT, LUCASBOT 5G…). Los otros juegos llaman a esta API con la acción 'banco'
+   y la clave secreta guardada en las propiedades del script (función claveBanco). */
+
+var CREDITOS_BIENVENIDA = 5;
+var PACKS = { '1': 100, '5': 500, '10': 1000 };      // euros -> créditos
+var MYPOS_URL = 'https://mypos.com/@futurmovil/';
+var WHATSAPP = '34633200100';
+
+function bancoSh_() { return hoja_('Creditos', ['Email', 'Saldo', 'Regalo bienvenida', 'Actualizado']); }
+function movSh_() { return hoja_('Movimientos', ['Fecha', 'Email', 'Cantidad', 'Saldo', 'Juego', 'Motivo']); }
+function pedSh_() { return hoja_('Pedidos', ['Pedido', 'Fecha', 'Email', 'Créditos', 'Euros', 'Estado', 'Resuelto']); }
+
+function bancoFila_(email) {
+  email = limpiaEmail_(email);
+  var sh = bancoSh_(), n = sh.getLastRow();
+  var v = n > 1 ? sh.getRange(2, 1, n - 1, 4).getValues() : [];
+  for (var i = 0; i < v.length; i++) if (String(v[i][0]).toLowerCase() === email) return { sh: sh, i: i, row: v[i] };
+  var row = [email, 0, '', new Date()];
+  sh.appendRow(row);
+  return { sh: sh, i: v.length, row: row };
+}
+function saldo_(email) {
+  email = limpiaEmail_(email);
+  var sh = bancoSh_(), n = sh.getLastRow(); if (n < 2) return 0;
+  var v = sh.getRange(2, 1, n - 1, 2).getValues();
+  for (var i = 0; i < v.length; i++) if (String(v[i][0]).toLowerCase() === email) return Number(v[i][1]) || 0;
+  return 0;
+}
+/* Sin lock propio: quien la llama ya debe tener el lock del script */
+function bancoMover_(email, cant, juego, motivo) {
+  var f = bancoFila_(email), saldo = Number(f.row[1]) || 0, nuevo = saldo + Number(cant);
+  if (nuevo < 0) throw new Error('SIN_CREDITOS');
+  f.sh.getRange(f.i + 2, 2, 1, 1).setValue(nuevo);
+  f.sh.getRange(f.i + 2, 4, 1, 1).setValue(new Date());
+  movSh_().appendRow([new Date(), limpiaEmail_(email), Number(cant), nuevo, juego || '', motivo || '']);
+  return nuevo;
+}
+function bancoBienvenida_(email) {
+  var f = bancoFila_(email);
+  if (f.row[2]) return;
+  f.sh.getRange(f.i + 2, 3).setValue('SI');
+  bancoMover_(email, CREDITOS_BIENVENIDA, APP_NAME, 'Regalo de bienvenida');
+}
+function saldos_() {
+  var sh = bancoSh_(), n = sh.getLastRow(), o = {};
+  if (n > 1) sh.getRange(2, 1, n - 1, 2).getValues().forEach(function (r) { o[String(r[0]).toLowerCase()] = Number(r[1]) || 0; });
+  return o;
+}
+function pedidosPend_() {
+  var sh = pedSh_(), n = sh.getLastRow(); if (n < 2) return [];
+  return sh.getRange(2, 1, n - 1, 7).getValues().filter(function (r) { return r[5] === 'PENDIENTE'; })
+    .map(function (r) { return { id: r[0], fecha: r[1], email: r[2], creditos: r[3], euros: r[4] }; }).reverse();
+}
+
+function comprar_(p) {
+  var u = sesion_(p.ses), eur = String(Number(p.euros) || 0);
+  if (!PACKS[eur]) throw new Error('Paquete no válido');
+  freno_('compra_' + u.email, 10, 3600);
+  var id = 'KB' + Date.now().toString(36).toUpperCase().slice(-6);
+  pedSh_().appendRow([id, new Date(), u.email, PACKS[eur], Number(eur), 'PENDIENTE', '']);
+  var msg = 'Hola! He pagado ' + eur + ' € para ' + PACKS[eur] + ' créditos de KILLBOT. Pedido ' + id + ' · Cuenta ' + u.email;
+  return { id: id, creditos: PACKS[eur], euros: Number(eur), url: MYPOS_URL + eur, whatsapp: 'https://wa.me/' + WHATSAPP + '?text=' + encodeURIComponent(msg) };
+}
+
+/* API para otros juegos (llamada de servidor a servidor) */
+function bancoApi_(p) {
+  var clave = PropertiesService.getScriptProperties().getProperty('banco_clave');
+  if (!clave || String(p.clave || '') !== clave) { freno_('banco_mal', 20, 600); throw new Error('Clave del banco incorrecta'); }
+  var email = limpiaEmail_(p.email);
+  if (!emailOk_(email)) throw new Error('Correo no válido');
+  var op = String(p.op || '');
+  if (op === 'saldo') return { creditos: saldo_(email) };
+  var cant = Math.round(Number(p.cant) || 0);
+  if (cant < 1 || cant > 1000) throw new Error('Cantidad no válida');
+  return lockU_(function () {
+    var nuevo = bancoMover_(email, op === 'restar' ? -cant : cant, String(p.juego || 'Otro juego').slice(0, 40), String(p.motivo || '').slice(0, 120));
+    return { creditos: nuevo };
+  });
+}
+/* Ejecutar a mano desde el editor: crea (si no existe) y muestra la clave del banco */
+function claveBanco() {
+  var pr = PropertiesService.getScriptProperties(), k = pr.getProperty('banco_clave');
+  if (!k) { k = Utilities.getUuid().replace(/-/g, '') + Utilities.getUuid().replace(/-/g, ''); pr.setProperty('banco_clave', k); }
+  Logger.log(k);
+  return k;
 }

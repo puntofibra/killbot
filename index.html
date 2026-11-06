@@ -383,6 +383,8 @@ textarea.inp{resize:vertical;font-family:inherit}
 .flip .kcard{width:100%;height:100%;animation:none}
 .flip.lg{width:min(28vw,200px)}
 .flip.md{width:min(21vw,108px)}
+.cards .flip{width:100%;cursor:pointer}
+.cards .flip .kcard .holo{display:none}
 @keyframes flyIn{from{transform:translateY(-70vh) rotate(-25deg) scale(.6);opacity:0}}
 .ov .hand{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;max-width:720px}
 .ov .hand .flip .kcard .holo{display:none}
@@ -401,6 +403,26 @@ textarea.inp{resize:vertical;font-family:inherit}
 .fan em{font-style:normal;margin-left:6px;font-size:12px;color:var(--mut)}
 .tvSide .fan i{width:2.2vh;height:3.3vh;margin-left:-1.2vh}
 .tvSide .fan em{font-size:1.8vh}
+/* avisos */
+.kbc{position:fixed;inset:0;z-index:95;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(0,0,0,.72);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);animation:ovIn .2s both}
+.kbc.out{animation:ovOut .25s both}
+.kbcBox{width:100%;max-width:380px;padding:22px 18px 16px;border-radius:22px;text-align:center;background:linear-gradient(180deg,#101a38,#060a18);border:1px solid var(--kc);box-shadow:0 0 30px color-mix(in srgb,var(--kc) 40%,transparent),inset 0 0 20px color-mix(in srgb,var(--kc) 12%,transparent);animation:zoomIn .35s cubic-bezier(.2,1.4,.4,1) both;position:relative;overflow:hidden}
+.kbcBox:before{content:"";position:absolute;left:0;right:0;top:0;height:3px;background:linear-gradient(90deg,transparent,var(--kc),transparent)}
+.kbcIco{font-size:46px;filter:drop-shadow(0 0 12px var(--kc))}
+.kbcBox h3{font-family:Orbitron;letter-spacing:1.5px;margin:6px 0 8px;font-size:18px;color:#fff;text-shadow:0 0 10px var(--kc)}
+.kbcBox p{margin:0 0 16px;font-size:16px;line-height:1.4;color:#cfe3ff}
+.kbcBox .row{gap:10px}
+/* créditos */
+.cred{display:inline-flex;align-items:center;gap:6px;padding:6px 12px;border-radius:999px;background:rgba(34,228,255,.12);border:1px solid rgba(34,228,255,.5);font-family:Orbitron;font-size:13px;color:#fff;cursor:pointer}
+.cred b{color:var(--neon);text-shadow:0 0 8px var(--neon)}
+.packs{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:6px 0 14px}
+.pack{padding:16px 6px;border-radius:18px;background:linear-gradient(180deg,rgba(34,228,255,.14),rgba(255,59,212,.08));border:1px solid rgba(34,228,255,.5);text-align:center;cursor:pointer;transition:transform .15s}
+.pack:active{transform:scale(.96)}
+.pack .gm{font-size:30px}
+.pack b{display:block;font-family:Orbitron;font-size:20px;color:#fff;margin:4px 0}
+.pack small{display:block;color:var(--mut);font-size:12px}
+.pack i{display:inline-block;margin-top:8px;padding:5px 12px;border-radius:10px;background:var(--lucas);color:#03140a;font-style:normal;font-weight:800;font-family:Orbitron;font-size:13px}
+.pack.best{border-color:var(--gold);box-shadow:0 0 18px rgba(255,210,63,.35)}
 /* imágenes de las animaciones: que nunca se salgan de la pantalla */
 .ov .big{max-width:100%;display:flex;justify-content:center}
 .ov .big .broken{max-width:100%}
@@ -532,7 +554,7 @@ function flipHTML(id, cls='', delay=600, fly=0){
 }
 function armFlips(root, snd=true){
   (root||document).querySelectorAll('.flip:not(.armed)').forEach(f=>{ f.classList.add('armed');
-    setTimeout(()=>{ f.classList.add('on'); if(snd) tone(880,.12,'triangle',.07,1320); }, +f.dataset.d||600); });
+    setTimeout(()=>{ if(f.dataset.manual) return; f.classList.add('on'); if(snd) tone(880,.12,'triangle',.07,1320); }, +f.dataset.d||600); });
 }
 
 /* ═════════════ SONIDO (Web Audio) ═════════════ */
@@ -681,13 +703,13 @@ function clearSess(){ try{ localStorage.removeItem('kb_sess'); }catch(e){} }
 function logoHTML(){ return `<div class="logo">${FAILED.has('logo')?`<div class="logoTxt" data-t="KILLBOT">KILLBOT</div>`:`<img class="lg" src="${IMG}logo.png" onerror="this.outerHTML='<div class=&quot;logoTxt&quot; data-t=&quot;KILLBOT&quot;>KILLBOT</div>'">`}<div class="sub">ASESINATO EN LA NAVE KB-9</div></div>`; }
 
 function showMenu(){
-  S.screen='menu'; stopPoll(); MUS.stop();
+  S.screen='menu'; stopPoll(); MUS.stop(); if(USER) setTimeout(refreshUser,50);
   const s = loadSess();
   app.innerHTML = `<div class="screen"><div class="menu">
     ${logoHTML()}
     <div class="hero">${brokenFx(1)}</div>
     ${PUB.banner?`<div class="banner">📢 ${esc(PUB.banner)}</div>`:''}
-    ${USER?`<div class="userChip"><span>👤 ${esc(USER.user.nombre)}</span><button id="bOut">Cerrar sesión</button></div>`:''}
+    ${USER?`<div class="userChip"><span>👤 ${esc(USER.user.nombre)}</span><span class="cred" id="bCred">💎 <b>${USER.user.admin?'∞':(USER.user.creditos||0)}</b> créditos ➕</span><button id="bOut">Salir</button></div>`:''}
     ${s ? `<button class="btn gold" id="bCont">▶ Volver a la partida ${esc(s.code)}</button>` : ''}
     <button class="btn big green" id="bMov">📱 Crear partida solo móviles</button>
     ${PUB.bots!==false?`<button class="btn gold" id="bSolo">🤖 Jugar solo contra bots</button>`:''}
@@ -702,6 +724,7 @@ function showMenu(){
   logoTaps(app.querySelector('.logo'));
   $('#bInst').onclick = instalar;
   if ($('#bOut')) $('#bOut').onclick = ()=>{ logout(); showMenu(); };
+  if ($('#bCred')) $('#bCred').onclick = ()=>showComprar();
   if ($('#bLog')) $('#bLog').onclick = ()=>showLogin();
   $('#bTv').onclick = ()=>{ SFX.click(); create('tv',''); };
   if ($('#bSolo')) $('#bSolo').onclick = ()=>{ SFX.click(); soloPick(); };
@@ -755,16 +778,48 @@ function showJoin(code){
 
 function loading(t){ app.innerHTML = `<div class="screen"><div class="loadHead">${lucas(3)}</div><div class="spinner"></div><p style="font-family:Orbitron;letter-spacing:2px;color:var(--mut)">${esc(t)}</p></div>`; }
 
+function sinCreditos(){ return USER && !USER.user.admin && (USER.user.creditos||0) < 1; }
+async function refreshUser(){ if(!USER) return; const r=await api('yo',{ses:USER.ses}); if(r.ok){ USER.user=r.user; try{localStorage.setItem('kb_user',JSON.stringify(USER));}catch(e){} const c=$('#bCred b'); if(c) c.textContent=USER.user.admin?'∞':USER.user.creditos; } }
+function showComprar(motivo){
+  const html=`<h2 class="t">💎 Créditos</h2>
+    ${motivo?`<div class="ptxt" style="margin-bottom:8px;color:#ffd23f">${motivo}</div>`:''}
+    <div class="ptxt" style="margin-bottom:6px">Tienes <b style="color:var(--neon)">${USER?(USER.user.admin?'∞':(USER.user.creditos||0)):0}</b> créditos. Cada partida cuesta <b>1 crédito</b>.</div>
+    <div style="color:var(--mut);font-size:13px;text-align:center;margin-bottom:8px">Tus créditos sirven también en los otros juegos de FuturMovil (como LUCASBOT 5G) si entras con el mismo correo.</div>
+    <div class="packs">
+      <div class="pack" data-e="1"><div class="gm">💎</div><b>100</b><small>partidas</small><i>1 €</i></div>
+      <div class="pack best" data-e="5"><div class="gm">💎💎</div><b>500</b><small>partidas</small><i>5 €</i></div>
+      <div class="pack" data-e="10"><div class="gm">💎💎💎</div><b>1000</b><small>partidas</small><i>10 €</i></div>
+    </div>
+    <button class="btn ghost" onclick="closeModal()">Ahora no</button>`;
+  modal(html);
+  fx.querySelectorAll('#modal .pack').forEach(p=>p.onclick=async()=>{
+    SFX.click();
+    try{
+      const r=await call('comprar',{ses:USER.ses, euros:p.dataset.e});
+      window.open(r.url,'_blank');
+      modal(`<div style="text-align:center"><div style="font-size:54px">💳</div><h2 class="t">Pedido ${esc(r.id)}</h2>
+        <div class="ptxt" style="margin-bottom:12px">Se ha abierto la página de pago de <b>myPOS</b> por <b>${r.euros} €</b>.<br><br>
+        Tus <b style="color:var(--neon)">${r.creditos} créditos</b> llegarán en cuanto confirmemos el pago.</div>
+        <a class="btn green" href="${r.whatsapp}" target="_blank" style="text-decoration:none;margin-bottom:10px">💬 Avisar por WhatsApp de que he pagado</a>
+        <a class="btn ghost" href="${r.url}" target="_blank" style="text-decoration:none;margin-bottom:10px">💳 Volver a abrir el pago</a>
+        <button class="btn ghost" onclick="closeModal();refreshUser()">Cerrar</button></div>`);
+    }catch(e){ toast(errMsg(e),1); }
+  });
+}
+function creditErr(e){ if(errMsg(e)==='SIN_CREDITOS'){ refreshUser(); showComprar('¡Te has quedado sin créditos! Recarga para seguir jugando.'); return true; } return false; }
+
 async function create(modo, name){
   if (!USER) return showLogin(()=>create(modo, name));
   if (PUB.mant) return toast('🚧 '+(PUB.mantMsg||'Juego en mantenimiento'),1);
+  if (sinCreditos()) return showComprar('Necesitas al menos 1 crédito para crear una partida.');
   loading('Preparando la nave…');
   try{ const r = await call('crear', {ses:USER&&USER.ses, modo}); Object.assign(S,{code:r.code,token:r.token,pid:r.pid||null,modo:r.modo}); saveSess(); SFX.whoosh(); enterRoom(); }
-  catch(e){ toast(errMsg(e),1); USER ? showMenu() : showLogin(()=>create(modo,name)); }
+  catch(e){ if(creditErr(e)) return showMenu(), showComprar('¡Te has quedado sin créditos! Recarga para seguir jugando.'); toast(errMsg(e),1); USER ? showMenu() : showLogin(()=>create(modo,name)); }
 }
 
 function soloPick(){
   if (!USER) return showLogin(soloPick);
+  if (sinCreditos()) return showComprar('Necesitas al menos 1 crédito para jugar.');
   modal(`<h2 class="t">🤖 Jugar solo</h2><div class="ptxt" style="margin-bottom:12px">¿Contra cuántos robots quieres jugar?<br><small style="color:var(--mut)">Los bots investigan, sospechan y acusan como un jugador más.</small></div>
     <div class="pick" style="grid-template-columns:repeat(4,1fr)">${[1,2,3,4,5,6,7,8].map(n=>`<button class="btn ${n===3?'green':''}" data-n="${n}" style="padding:16px 0;font-size:22px">${n}</button>`).join('')}</div>
     <button class="btn ghost" onclick="closeModal()">Cancelar</button>`);
@@ -772,14 +827,15 @@ function soloPick(){
 }
 async function createSolo(n){
   if (PUB.mant) return toast('🚧 '+(PUB.mantMsg||'Juego en mantenimiento'),1);
+  if (sinCreditos()) return showComprar('Necesitas al menos 1 crédito para jugar.');
   loading('Preparando la nave…');
   try{
     const r = await call('crear', {ses:USER.ses, modo:'movil'});
     Object.assign(S,{code:r.code,token:r.token,pid:r.pid,modo:r.modo}); saveSess();
     for (let i=0;i<n;i++){ loading(`Despertando robot ${i+1} de ${n}…`); await G('bot'); }
     loading('¡Despegando!');
-    await G('empezar'); SFX.whoosh(); enterRoom();
-  }catch(e){ toast(errMsg(e),1); if (S.code) enterRoom(); else showMenu(); }
+    await G('empezar'); SFX.whoosh(); enterRoom(); refreshUser();
+  }catch(e){ if(creditErr(e)){ if(S.code) enterRoom(); return; } toast(errMsg(e),1); if (S.code) enterRoom(); else showMenu(); }
 }
 
 function howTo(){
@@ -792,6 +848,22 @@ function howTo(){
   <h3>📺 MODOS</h3><p><b>TV/PC:</b> la pantalla grande es el tablero y cada uno juega con su móvil. <b>Solo móviles:</b> un móvil crea la sala y los demás entran con el QR o el código; todos ven el tablero en su móvil.</p>
   </div><button class="btn green" onclick="closeModal()">¡Entendido!</button>`);
 }
+
+/* ═════════════ AVISOS BONITOS (sustituyen a confirm/alert) ═════════════ */
+function kbConfirm(msg, o={}){
+  return new Promise(res=>{
+    const w=document.createElement('div'); w.className='kbc';
+    w.innerHTML=`<div class="kbcBox" style="--kc:${o.color||'var(--neon)'}"><div class="kbcIco">${o.icon||'⚠️'}</div>
+      <h3>${o.title||'¿Seguro?'}</h3><p>${msg}</p>
+      <div class="row">${o.noCancel?'':`<button class="btn ghost" data-v="0">${o.cancel||'Cancelar'}</button>`}<button class="btn ${o.danger?'red':'green'}" data-v="1">${o.ok||'Aceptar'}</button></div></div>`;
+    document.body.appendChild(w); SFX.click(); vib(40);
+    const close=v=>{ w.classList.add('out'); setTimeout(()=>w.remove(),250); res(v); };
+    w.querySelectorAll('[data-v]').forEach(b=>b.onclick=()=>close(b.dataset.v==='1'));
+    w.onclick=e=>{ if(e.target===w && !o.noCancel) close(false); };
+  });
+}
+const kbAlert=(msg,o={})=>kbConfirm(msg,Object.assign({noCancel:true,ok:'Entendido',icon:'ℹ️',title:'Aviso'},o));
+window.alert = m=>kbAlert(esc(m));
 
 /* ═════════════ MODALES ═════════════ */
 function modal(html, onClose){
@@ -857,7 +929,7 @@ function renderLobby(){
       <div class="plist">${g.players.map(p=>`<div class="pl" style="--c:${ALL[p.sus].c}">${art(p.sus)}<div class="n">${esc(p.name)}</div><div class="tag">${p.host?'👑 ANFITRIÓN':p.bot?'🤖 BOT':''}</div>${amHost()&&!p.host?`<button class="x" data-k="${p.id}">✕</button>`:''}</div>`).join('')}</div>
     </div>
     ${amHost()?`<div class="row"><button class="btn" id="bBot" ${g.players.length>=9?'disabled':''}>🤖 Añadir bot</button></div>
-      <button class="btn big green" id="bGo" ${g.players.length<2?'disabled':''}>▶ Empezar partida</button>`
+      <button class="btn big green" id="bGo" ${g.players.length<2?'disabled':''}>▶ Empezar partida <small style="opacity:.75;font-size:12px">· 1 💎</small></button>`
       :`<div class="glass" style="padding:16px;text-align:center;font-size:17px">⏳ Esperando a que el anfitrión empiece…</div>`}
     <div class="row" style="justify-content:center"><button class="btn ghost sm" id="bMusL" style="flex:none">🎵 Música</button><button class="btn ghost sm" id="bExit" style="flex:none">Salir</button></div>
   </div></div>`;
@@ -904,7 +976,7 @@ function drawQR(el, text, size){
 
 async function startGame(){
   SFX.click();
-  try{ onState(await G('empezar')); }catch(e){ toast(errMsg(e),1); }
+  try{ onState(await G('empezar')); refreshUser(); }catch(e){ if(!creditErr(e)) toast(errMsg(e),1); }
 }
 function exitGame(){
   if (S.g && S.g.status==='lobby' && S.g.me && !S.g.isHost) G('quitar', {pid:S.g.me}).catch(()=>{});
@@ -938,7 +1010,7 @@ function buildGame(){
     $('#bMenu').onclick = ()=>modal(`<h2 class="t">Menú</h2><div style="display:flex;flex-direction:column;gap:10px">
       <button class="btn" onclick="closeModal();howTo()">📖 Cómo se juega</button>
       <button class="btn" onclick="share(joinUrl(S.code),'Partida KILLBOT ' + S.code + ':')">📤 Compartir sala</button>
-      <button class="btn red" onclick="if(confirm('¿Salir de la partida?')) exitGame()">🚪 Salir al menú</button>
+      <button class="btn red" onclick="kbConfirm('Si sales, la partida seguirá sin ti.',{title:'¿Salir de la partida?',icon:'🚪',ok:'Salir',danger:true,color:'var(--red)'}).then(v=>v&&exitGame())">🚪 Salir al menú</button>
       <button class="btn ghost" onclick="closeModal()">Cerrar</button></div>`);
   }
   buildBoard($('#board'));
@@ -1115,8 +1187,9 @@ function openTab(t, refresh){
   const head=(x)=>`<div class="hd"><b>${x}</b><button class="ib" onclick="openTab(null)">✕</button></div>`;
   if (t==='hand'){
     if (refresh && d.dataset.t==='hand') return;
-    h = head('🃏 MIS CARTAS') + `<div class="cards">${(g.hand||[]).map(c=>cardHTML(c)).join('')}</div>` +
-      ((g.seen||[]).length?`<div class="lbl" style="margin-top:14px">Cartas que me han enseñado</div><div class="cards">${g.seen.map(c=>cardHTML(c)).join('')}</div>`:'');
+    const hd=g.hand||[], sn=g.seen||[];
+    h = head('🃏 MIS CARTAS') + `<div style="color:var(--mut);font-size:13px;margin:-4px 0 10px">Toca una carta para taparla o destaparla</div><div class="cards">${hd.map((c,k)=>flipHTML(c,'',500+k*500)).join('')}</div>` +
+      (sn.length?`<div class="lbl" style="margin-top:14px">Cartas que me han enseñado</div><div class="cards">${sn.map((c,k)=>flipHTML(c,'',500+(hd.length+k)*500)).join('')}</div>`:'');
   } else if (t==='notes'){
     h = head('📝 LIBRETA DE DETECTIVE') + notesHTML();
   } else if (t==='log'){
@@ -1125,6 +1198,9 @@ function openTab(t, refresh){
     h = head('👥 TRIPULACIÓN') + playersHTML();
   }
   d.dataset.t=t; d.innerHTML=h; d.classList.add('open');
+  if (t==='hand'){ d.querySelectorAll('.flip').forEach(f=>f.style.animation='none'); armFlips(d);
+    d.onclick=e=>{ const f=e.target.closest('.flip'); if(!f) return; f.dataset.manual=1; f.classList.toggle('on'); tone(f.classList.contains('on')?880:520,.1,'triangle',.06); }; }
+  else d.onclick=null;
   if (t==='notes') bindNotes();
 }
 
@@ -1468,7 +1544,7 @@ const Admin = (()=>{
 
   function pinta(){
     const box = $('#admBox'); if(!box) return;
-    const T = [['resumen','📊 Resumen'],['ajustes','⚙️ Ajustes'],['cartas','🃏 Cartas'],['usuarios','👥 Usuarios'],['seguridad','🔐 Seguridad']];
+    const T = [['resumen','📊 Resumen'],['creditos',`💎 Créditos${(D.pedidos||[]).length?' ('+D.pedidos.length+')':''}`],['ajustes','⚙️ Ajustes'],['cartas','🃏 Cartas'],['usuarios','👥 Usuarios'],['seguridad','🔐 Seguridad']];
     let h = `<div class="admHd"><h2 class="t" style="margin:0">Panel de control</h2><button class="ib" onclick="closeModal()">✕</button></div>
       <div class="admTabs">${T.map(([k,n])=>`<button class="${pest===k?'on':''}" data-p="${k}">${n}</button>`).join('')}</div><div class="admBody">`;
     const a = D.ajustes;
@@ -1502,8 +1578,15 @@ const Admin = (()=>{
             <div class="row"><input class="inp l s" data-k="c" type="color" value="${o.c||x.c0||'#22e4ff'}" style="padding:2px;height:38px"><input class="inp l s" data-k="img" placeholder="URL imagen (opcional)" value="${esc(o.img||'')}"></div>
             <div class="row"><button class="btn sm green" data-save>Guardar</button><button class="btn sm ghost" data-reset>Original</button></div></div></div>`; }).join('')).join('')}`;
     }
+    if (pest==='creditos'){
+      h += `<div class="lbl">Pedidos pendientes de confirmar</div>` + ((D.pedidos||[]).map(p=>`<div class="admRow"><div><b>${esc(p.id)}</b> · ${p.creditos} 💎 · <b>${p.euros} €</b><br><small>${esc(p.email)} · ${fecha(p.fecha)}</small></div>
+          <div class="row" style="flex:none;gap:6px"><button class="btn sm green" data-ped="${esc(p.id)}" data-ok="1">✔ Pagado</button><button class="btn sm red" data-ped="${esc(p.id)}" data-ok="0">✕</button></div></div>`).join('') || '<div class="mut">No hay pedidos pendientes</div>');
+      h += `<div class="lbl" style="margin-top:14px">Dar o quitar créditos</div>
+        <input class="inp l s" id="cEm" placeholder="correo@cliente.com"><div class="row"><input class="inp l s" id="cCant" type="number" placeholder="Cantidad (negativo para quitar)"><button class="btn sm green" id="cDar" style="flex:none">Aplicar</button></div>
+        <div class="lbl" style="margin-top:14px">Saldos</div>` + (Object.entries(D.saldos||{}).sort((a,b)=>b[1]-a[1]).map(([e,v])=>`<div class="admRow"><small>${esc(e)}</small><b>${v} 💎</b></div>`).join('') || '<div class="mut">—</div>');
+    }
     if (pest==='usuarios'){
-      h += D.usuarios.map(u=>`<div class="admRow"><div><b>${esc(u.nombre)}</b> ${u.google?'<small>(Google)</small>':''}<br><small>${esc(u.email)} · ${u.partidas} partidas · ${fecha(u.ultimo)}</small></div>
+      h += D.usuarios.map(u=>`<div class="admRow"><div><b>${esc(u.nombre)}</b> ${u.google?'<small>(Google)</small>':''}<br><small>${esc(u.email)} · ${u.partidas} partidas · 💎 ${(D.saldos||{})[String(u.email).toLowerCase()]||0} · ${fecha(u.ultimo)}</small></div>
         <button class="btn sm ${u.bloq?'green':'red'}" data-bloq="${esc(u.email)}" data-v="${u.bloq?0:1}">${u.bloq?'Desbloquear':'Bloquear'}</button></div>`).join('') || '<div class="mut">Aún no hay anfitriones registrados</div>';
     }
     if (pest==='seguridad'){
@@ -1514,7 +1597,7 @@ const Admin = (()=>{
     h += `</div>`;
     box.innerHTML = h;
     box.querySelectorAll('.admTabs button').forEach(b=>b.onclick=()=>{ pest=b.dataset.p; pinta(); });
-    box.querySelectorAll('[data-cerrar]').forEach(b=>b.onclick=async()=>{ if(!confirm('¿Cerrar la sala '+b.dataset.cerrar+'?')) return; try{ await adm('cerrar',{code:b.dataset.cerrar}); D=await adm('resumen'); pinta(); toast('Sala cerrada'); }catch(e){} });
+    box.querySelectorAll('[data-cerrar]').forEach(b=>b.onclick=async()=>{ if(!await kbConfirm('Se expulsará a todos los jugadores.',{title:'¿Cerrar la sala '+b.dataset.cerrar+'?',icon:'🛑',ok:'Cerrar sala',danger:true,color:'var(--red)'})) return; try{ await adm('cerrar',{code:b.dataset.cerrar}); D=await adm('resumen'); pinta(); toast('Sala cerrada'); }catch(e){} });
     const on=(id,f)=>{ const e=box.querySelector(id); if(e) e.onclick=f; };
     on('#aSave', async()=>{ try{ const r=await adm('ajustes',{tRefutar:$('#aRef').value, botMs:$('#aBot').value, maxJug:$('#aMax').value, bots:$('#aBots').checked, banner:$('#aBan').value, intro:$('#aIntro').value, mant:$('#aMant').checked, mantMsg:$('#aMantMsg').value});
       D.ajustes=r.ajustes; toast('✅ Ajustes guardados'); }catch(e){ if(e.message!=='ADMIN') toast(errMsg(e),1); } });
@@ -1527,7 +1610,11 @@ const Admin = (()=>{
       c.querySelector('[data-reset]').onclick = async()=>{ try{ const r=await adm('carta',{id}); D.cartas=r.cartas; aplicaCartas(r.cartas); toast('Carta original'); pinta(); }catch(e){} };
     });
     box.querySelectorAll('[data-bloq]').forEach(b=>b.onclick=async()=>{ try{ await adm('bloquear',{email:b.dataset.bloq, bloq:b.dataset.v==='1'}); D=await adm('resumen'); pinta(); }catch(e){ if(e.message!=='ADMIN') toast(errMsg(e),1); } });
-    on('#aLlaves', async()=>{ if(!confirm('¿Borrar todas las llaves? Tendrás que registrar la tuya otra vez.')) return; try{ await adm('llavesBorrar'); D.llaves=0; pinta(); }catch(e){} });
+    box.querySelectorAll('[data-ped]').forEach(b=>b.onclick=async()=>{ const ok=b.dataset.ok==='1';
+      if(!await kbConfirm(ok?'Se sumarán los créditos a su cuenta.':'El pedido se marcará como cancelado.',{title:(ok?'¿Confirmar pago de ':'¿Cancelar ')+b.dataset.ped+'?',icon:ok?'💳':'🗑️',ok:ok?'Confirmar':'Cancelar pedido',danger:!ok,cancel:'Volver'})) return;
+      try{ const r=await adm('pedido',{id:b.dataset.ped,ok}); D.pedidos=r.pedidos; D.saldos=r.saldos; toast(ok?'✅ Créditos entregados':'Pedido cancelado'); pinta(); }catch(e){ if(e.message!=='ADMIN') toast(errMsg(e),1); } });
+    on('#cDar', async()=>{ try{ const r=await adm('darCreditos',{email:$('#cEm').value,cant:$('#cCant').value}); D.saldos=r.saldos; toast('✅ Créditos actualizados'); pinta(); }catch(e){ if(e.message!=='ADMIN') toast(errMsg(e),1); } });
+    on('#aLlaves', async()=>{ if(!await kbConfirm('Tendrás que registrar tu llave otra vez.',{title:'¿Borrar todas las llaves?',icon:'🔑',ok:'Borrar',danger:true,color:'var(--red)'})) return; try{ await adm('llavesBorrar'); D.llaves=0; pinta(); }catch(e){} });
     on('#aTotpNx', async()=>{ try{ const r=await adm('totpNuevo'); D.totp=true; pinta();
       $('#totpBox').innerHTML=`<div class="ptxt" style="font-size:14px">Escanéalo con Google Authenticator:</div><div class="qr" id="tQr" style="margin:10px auto;width:max-content"></div><div class="ptxt" style="font-size:13px;word-break:break-all">Clave: <b>${r.secreto}</b></div>`;
       drawQR($('#tQr'), r.url, 170); }catch(e){} });
@@ -1539,7 +1626,7 @@ const Admin = (()=>{
 })();
 
 /* ═════════════ AUTO-ACTUALIZACIÓN ═════════════ */
-const APP_V = '14';
+const APP_V = '16';
 async function checkVersion(){
   try{
     const r = await fetch('version.json?t='+Date.now(), {cache:'no-store'}); if(!r.ok) return;
