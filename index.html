@@ -1923,7 +1923,7 @@ const Admin = (()=>{
 })();
 
 /* ═════════════ AUTO-ACTUALIZACIÓN ═════════════ */
-const APP_V = '32';   // ¡tiene que coincidir SIEMPRE con version.json!
+const APP_V = '33';   // ¡tiene que coincidir SIEMPRE con version.json!
 async function checkVersion(){
   try{
     const r = await fetch('version.json?t='+Date.now(), {cache:'no-store'}); if(!r.ok) return;
@@ -1946,7 +1946,7 @@ setTimeout(checkVersion, 4000);
 (async function init(){
   loading('Encendiendo motores…');
   const c = await api('config');
-  if (c.ok){ PUB = c.cfg; IMGV = PUB.imgVer||1; aplicaCartas(PUB.cartas); }
+  if (c.ok){ PUB = c.cfg; IMGV = (PUB.imgVer||1)+'-'+APP_V; aplicaCartas(PUB.cartas); }
   if (USER) api('yo',{ses:USER.ses}).then(r=>{ if(!r.ok && r.error==='SESION') logout(true); else if(r.ok){ USER.user=r.user; try{localStorage.setItem('kb_user',JSON.stringify(USER));}catch(e){} } });
   if (ADMQ) return Admin.autorizar(ADMQ);
   if (TVQ) return tvAuthorize(TVQ);
