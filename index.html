@@ -427,6 +427,15 @@ textarea.inp{resize:vertical;font-family:inherit}
 .rvTok img,.rvTok .emo{width:100%;aspect-ratio:1;object-fit:contain;filter:drop-shadow(0 0 8px var(--c,#ff9d2e)) drop-shadow(0 3px 5px #000);font-size:34px}
 .rvTok span{font-family:Orbitron;font-size:9px;padding:2px 5px;border-radius:5px;background:rgba(0,0,0,.75);white-space:nowrap;margin-top:-6px}
 .room,.core{cursor:pointer}
+/* entrar en la TV con el móvil */
+.tvLog{width:100%;max-width:1100px;display:grid;grid-template-columns:1fr auto;gap:4vw;align-items:center;padding:4vh 4vw}
+.tvlL{display:flex;flex-direction:column;gap:14px}
+.tvlL .logo{text-align:left}
+.tvSteps{margin:0;padding-left:1.4em;font-size:clamp(16px,2.6vh,24px);line-height:1.7;color:#d6e8ff}
+.tvSteps b{color:var(--lucas)}
+.tvlR{display:flex;flex-direction:column;align-items:center;gap:12px}
+.tvq{padding:14px;border-radius:20px;min-width:200px;min-height:200px;display:flex;align-items:center;justify-content:center;box-shadow:0 0 40px rgba(34,228,255,.45)}
+@media (max-aspect-ratio:1/1){.tvLog{grid-template-columns:1fr;text-align:center}.tvlL .logo{text-align:center}.tvSteps{text-align:left}}
 /* cartas que ya conoces: en gris */
 .pick .kcard.known{filter:grayscale(1) brightness(.5) contrast(.9);box-shadow:none!important}
 .pick .kcard.known.sel{filter:grayscale(.6) brightness(.8)}
@@ -476,6 +485,7 @@ const QS = new URLSearchParams(location.search);
 const SALA0 = (QS.get('sala')||'').toUpperCase().replace(/[^A-Z]/g,'').slice(0,4);
 const MODO0 = (QS.get('modo')||'').toLowerCase();
 const ADMQ = (QS.get('adm')||'').replace(/[^a-f0-9]/g,'');
+const TVQ = (QS.get('tvlogin')||'').replace(/[^a-f0-9]/g,'');
 const BASE = CFG.URL;
 const IMG = 'img/';
 let IMGV = 1, PUB = {};
@@ -851,7 +861,7 @@ function showComprar(motivo){
 function creditErr(e){ if(errMsg(e)==='SIN_CREDITOS'){ refreshUser(); showComprar('¡Te has quedado sin créditos! Recarga para seguir jugando.'); return true; } return false; }
 
 async function create(modo, name){
-  if (!USER) return showLogin(()=>create(modo, name));
+  if (!USER) return modo==='tv' ? showTvLogin(()=>create(modo, name)) : showLogin(()=>create(modo, name));
   if (PUB.mant) return toast('🚧 '+(PUB.mantMsg||'Juego en mantenimiento'),1);
   if (sinCreditos()) return showComprar('Necesitas al menos 1 crédito para crear una partida.');
   loading('Preparando la nave…');
@@ -1467,7 +1477,7 @@ function showLogin(next, vista){
     <div class="ptxt" style="font-size:15px;margin:-4px 0 4px">Para crear partidas necesitas cuenta. Tus invitados entran sin registrarse.</div>
     ${vista!=='recuperar'?tabs:''}
     ${form}
-    ${vista!=='recuperar'?`<div class="sep"><span>o</span></div><div id="gBtn" class="gBtn"></div>`:''}
+    ${vista!=='recuperar'?`<div class="sep"><span>o</span></div><div id="gBtn" class="gBtn"></div><button class="btn ghost sm" id="bQrLog" style="align-self:center">📱 Entrar escaneando un QR con el móvil</button>`:''}
     <div class="row"><button class="btn ghost sm" id="bInst">📲 Instalar</button><button class="btn ghost sm" id="bShare">📤 Compartir</button></div>
     <button class="btn ghost sm" id="bBack" style="align-self:center">← Volver al menú</button>
   </div></div>`;
@@ -1475,6 +1485,7 @@ function showLogin(next, vista){
   const done = r=>{ setUser(r); SFX.reveal(); toast('👋 Hola, '+r.user.nombre); next ? next() : showMenu(); };
   app.querySelectorAll('.segm button').forEach(b=>b.onclick=()=>showLogin(next,b.dataset.v));
   $('#bBack').onclick = showMenu;
+  if ($('#bQrLog')) $('#bQrLog').onclick = ()=>showTvLogin(next);
   $('#bInst').onclick = instalar;
   $('#bShare').onclick = ()=>share(BASE, '🤖💀 Juega conmigo a KILLBOT, el cluedo espacial:');
   if (vista==='entrar'){
@@ -1500,6 +1511,51 @@ function showLogin(next, vista){
       google.accounts.id.renderButton($('#gBtn'), {theme:'filled_black', size:'large', shape:'pill', text:'continue_with', width: Math.min(360, $('#gBtn').offsetWidth||320)});
     }catch(e){}
   });
+}
+
+/* ═════════════ ENTRAR EN LA TV CON EL MÓVIL ═════════════ */
+let tvqT=0;
+function showTvLogin(next){
+  S.screen='login'; clearInterval(tvqT);
+  app.innerHTML=`<div class="screen"><div class="tvLog glass">
+    <div class="tvlL">${logoHTML()}<h2 class="t" style="margin-top:8px">Entra con tu móvil</h2>
+      <ol class="tvSteps"><li>Escanea el código con la cámara del móvil</li><li>Entra con tu cuenta o con Google</li><li>Pulsa <b>Conectar</b> y la pantalla entrará sola</li></ol>
+      <div class="row" style="max-width:420px"><button class="btn ghost" id="bMan">⌨️ Entrar aquí</button><button class="btn ghost" id="bBk">← Volver</button></div></div>
+    <div class="tvlR"><div class="qr tvq" id="tvQr"><div class="spinner"></div></div><div class="ptxt" id="tvSt">Generando código…</div></div>
+  </div></div>`;
+  $('#bMan').onclick=()=>{ clearInterval(tvqT); showLogin(next); };
+  $('#bBk').onclick=()=>{ clearInterval(tvqT); showMenu(); };
+  const gen=async()=>{
+    try{
+      const r=await call('tvQr'); const el=$('#tvQr'); if(!el) return; el.innerHTML='';
+      drawQR(el, r.url, Math.round(Math.min(innerHeight*.5, innerWidth*.6, 420)));
+      $('#tvSt').textContent='⏳ Esperando que confirmes en el móvil…';
+      clearInterval(tvqT);
+      tvqT=setInterval(async()=>{
+        if(!$('#tvQr')) return clearInterval(tvqT);
+        const s=await api('tvQrEstado',{q:r.q});
+        if(s.estado==='ok'){ clearInterval(tvqT); setUser(s); SFX.reveal(); toast('👋 Hola, '+s.user.nombre); next?next():showMenu(); }
+        else if(s.estado==='caducado'){ clearInterval(tvqT); gen(); }
+      }, 2000);
+    }catch(e){ $('#tvSt').textContent=errMsg(e); }
+  };
+  gen();
+}
+function tvAuthorize(q){
+  const clean=()=>{ try{ history.replaceState(null,'',location.pathname); }catch(e){} };
+  if(!USER) return showLogin(()=>tvAuthorize(q));
+  app.innerHTML=`<div class="screen"><div class="menu glass" style="padding:24px;text-align:center">
+    <div style="font-size:64px">📺</div><h2 class="t">Conectar pantalla</h2>
+    <div class="ptxt" id="taTxt">¿Quieres entrar en la TV con la cuenta de <b>${esc(USER.user.nombre)}</b>?</div>
+    <button class="btn big green" id="taOk">✅ Conectar</button>
+    <button class="btn ghost" id="taOtra">Usar otra cuenta</button>
+    <button class="btn ghost" id="taNo">Cancelar</button></div></div>`;
+  $('#taOk').onclick=async()=>{ const b=$('#taOk'); b.disabled=true;
+    try{ await call('tvAutorizar',{q, ses:USER.ses}); SFX.reveal(); vib([80,60,80]);
+      $('#taTxt').innerHTML='✅ <b>¡Pantalla conectada!</b><br>Ya puedes mirar la TV.'; b.remove(); $('#taOtra').remove(); $('#taNo').textContent='Ir al juego';
+    }catch(e){ toast(errMsg(e),1); b.disabled=false; } };
+  $('#taOtra').onclick=()=>{ logout(); showLogin(()=>tvAuthorize(q)); };
+  $('#taNo').onclick=()=>{ clean(); showMenu(); };
 }
 
 /* ═════════════ INSTALAR / COMPARTIR (PWA) ═════════════ */
@@ -1694,7 +1750,7 @@ const Admin = (()=>{
 })();
 
 /* ═════════════ AUTO-ACTUALIZACIÓN ═════════════ */
-const APP_V = '19';
+const APP_V = '20';
 async function checkVersion(){
   try{
     const r = await fetch('version.json?t='+Date.now(), {cache:'no-store'}); if(!r.ok) return;
@@ -1720,6 +1776,7 @@ setTimeout(checkVersion, 4000);
   if (c.ok){ PUB = c.cfg; IMGV = PUB.imgVer||1; aplicaCartas(PUB.cartas); }
   if (USER) api('yo',{ses:USER.ses}).then(r=>{ if(!r.ok && r.error==='SESION') logout(true); else if(r.ok){ USER.user=r.user; try{localStorage.setItem('kb_user',JSON.stringify(USER));}catch(e){} } });
   if (ADMQ) return Admin.autorizar(ADMQ);
+  if (TVQ) return tvAuthorize(TVQ);
   const s = loadSess();
   if (SALA0){
     if (s && s.code===SALA0){ Object.assign(S,{code:s.code,token:s.token,pid:s.pid,modo:s.modo}); return enterRoom(); }

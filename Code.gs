@@ -56,6 +56,9 @@ function manejar_(p) {
       case 'google':      r = google_(p); break;
       case 'yo':          r = { user: pubUser_(sesion_(p.ses)) }; break;
       case 'comprar':     r = comprar_(p); break;
+      case 'tvQr':        r = tvQr_(); break;
+      case 'tvQrEstado':  r = tvQrEstado_(p); break;
+      case 'tvAutorizar': r = tvAutorizar_(p); break;
       case 'banco':       r = bancoApi_(p); break;
       case 'salir':       r = salir_(p); break;
       case 'recuperar':   r = recuperar_(p); break;
@@ -1063,4 +1066,34 @@ function claveBanco() {
   if (!k) { k = Utilities.getUuid().replace(/-/g, '') + Utilities.getUuid().replace(/-/g, ''); pr.setProperty('banco_clave', k); }
   Logger.log(k);
   return k;
+}
+
+
+/* ═════════════════ ENTRAR EN LA TV ESCANEANDO UN QR CON EL MÓVIL ═════════════════ */
+function tvQr_() {
+  freno_('tvqr', 40, 600);
+  var q = Utilities.getUuid().replace(/-/g, '').slice(0, 16);
+  CacheService.getScriptCache().put('tvq_' + q, 'esperando', 300);
+  return { q: q, url: PUBLIC_BASE_URL + '?tvlogin=' + q };
+}
+function tvQrEstado_(p) {
+  var k = 'tvq_' + String(p.q || '').replace(/[^0-9a-f]/g, ''), c = CacheService.getScriptCache(), v = c.get(k);
+  if (!v) return { estado: 'caducado' };
+  if (v === 'esperando') return { estado: 'esperando' };
+  c.remove(k);
+  var r = JSON.parse(v); r.estado = 'ok';
+  return r;
+}
+function tvAutorizar_(p) {
+  freno_('tvaut', 20, 600);
+  var u = sesion_(p.ses);
+  var k = 'tvq_' + String(p.q || '').replace(/[^0-9a-f]/g, ''), c = CacheService.getScriptCache();
+  if (c.get(k) !== 'esperando') throw new Error('Este QR ha caducado. Genera otro en la pantalla.');
+  return lockU_(function () {
+    var f = usuarios_(), i = buscar_(f.rows, U.Email, u.email);
+    if (i < 0) throw new Error('Cuenta no encontrada');
+    var r = nuevaSesion_(f.sh, i, f.rows[i]);
+    c.put(k, JSON.stringify({ ses: r.ses, user: r.user }), 300);
+    return { nombre: u.nombre };
+  });
 }
