@@ -231,10 +231,20 @@ h2.t{font-family:Orbitron;font-weight:900;letter-spacing:2px;margin:0 0 14px;fon
 .ov .trio{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
 .ov .trio .kcard{width:min(28vw,200px)}
 .ov .trio .kcard:nth-child(2){animation-delay:.25s}.ov .trio .kcard:nth-child(3){animation-delay:.5s}
-.endBot img{height:170px;filter:drop-shadow(0 0 20px var(--g))}
-.ch .bot,.slot .bot{width:100%}
-.ch .bot img{width:100%;aspect-ratio:1;object-fit:contain}
-.slot .bot img{height:15vh}
+.endBot img{height:150px;width:auto;filter:drop-shadow(0 0 20px var(--g))}
+.endBot .bot{margin-bottom:34px}
+.ch .bot img{height:min(22vw,104px);width:auto;max-width:100%;aspect-ratio:auto}
+.ch{padding-bottom:12px}
+.ch .bot{margin-bottom:12px}
+.slot .bot img{height:13vh;width:auto;max-width:100%}
+.slot .bot{margin-bottom:2vh}
+.ov .big .bot img{height:min(36vh,300px)}
+.ov .big .bot{margin-bottom:6vh}
+.shake img{animation:shake .5s 4,float 3s ease-in-out infinite 2s}
+@keyframes shake{0%,100%{transform:translateX(0)}25%{transform:translateX(-8px) rotate(-3deg)}75%{transform:translateX(8px) rotate(3deg)}}
+.ov .big.shake img{height:min(30vh,250px);width:auto}
+.ov .duo{display:flex;gap:12px;justify-content:center}
+.ov .duo .kcard{width:min(24vw,150px)}
 .hero .broken img{height:180px;max-width:100%;object-fit:contain}
 .loadHead img,.loadHead .emo{height:120px;animation:float 3s ease-in-out infinite;filter:drop-shadow(0 0 16px rgba(23,255,95,.35))}
 .ghostEnd{display:flex;align-items:center;gap:10px;margin:6px 0 14px;text-align:left}
@@ -346,7 +356,7 @@ textarea.inp{resize:vertical;font-family:inherit}
 /* efectos: propulsores animados */
 .bot{position:relative;display:inline-block;--fc:#17ff5f}
 .bot>img,.bot>.emo{position:relative;z-index:2}
-.fl{position:absolute;left:50%;bottom:6%;width:44%;height:24%;transform:translate(-50%,88%);z-index:1;pointer-events:none}
+.fl{position:absolute;left:50%;bottom:3%;width:44%;height:22%;transform:translate(-50%,90%);z-index:1;pointer-events:none}
 .fl i{position:absolute;bottom:0;width:22%;height:100%;border-radius:50% 50% 45% 45%/30% 30% 70% 70%;transform-origin:50% 0;
   background:radial-gradient(ellipse at 50% 22%,#fff 0 18%,var(--fc) 45%,transparent 72%);filter:blur(1px) drop-shadow(0 0 8px var(--fc));animation:flame .14s ease-in-out infinite alternate;mix-blend-mode:screen}
 .fl i:nth-child(1){left:8%}.fl i:nth-child(2){left:39%;height:118%;animation-delay:.05s}.fl i:nth-child(3){left:70%;animation-delay:.09s}
@@ -456,7 +466,13 @@ function art(id){
 }
 const lucas = n => pimg('victima_'+n, robotSVG('#17ff5f', n===4));
 /* personaje con propulsores animados (las imágenes vienen sin llamas) */
-function botFx(id){ const x=ALL[id]; return `<div class="bot" style="--fc:${x.c}">${art(id)}<div class="fl"><i></i><i></i><i></i></div></div>`; }
+/* posición de los propulsores en cada PNG (x = centro %, w = ancho %); null = sin propulsores */
+const FLAMES = { nova:{x:42,w:30}, voltia:{x:49,w:26}, tuercas:{x:50,w:32}, chispas:null, megaton:{x:54,w:40},
+  byte:{x:44,w:34}, cromo:{x:42,w:30}, octo:null, botler:{x:36,w:26} };
+function botFx(id){ const x=ALL[id], f=FLAMES[id];
+  const fl = (f && !x.img) ? `<div class="fl" style="left:${f.x}%;width:${f.w}%"><i></i><i></i><i></i></div>` : '';
+  return `<div class="bot" style="--fc:${x.c}">${art(id)}${fl}</div>`; }
+const accImg = id => pimg('acusado_'+id, robotSVG(ALL[id].c));
 /* Lucas roto con chispas y humo */
 function brokenFx(n){
   let fx=''; const sp=[[30,40,-40,-50],[62,30,50,-60],[48,55,-20,-70],[70,58,60,-30],[25,62,-55,-20]];
@@ -865,7 +881,7 @@ function updateGame(prev){
   // ¿me toca enseñar carta?
   if (g.phase==='refutar' && g.sug && g.sug.refuter===g.me && g.sug.options){
     const k = g.sug.by+g.sug.sus+g.sug.wea+g.sug.room+g.evn;
-    if (S.refKey!==k){ S.refKey=k; showRefute(); }
+    if (S.refKey!==k && !evBusy && !evQ.length){ S.refKey=k; showRefute(); }
   } else if (S.refKey && $('#modal') && $('#modal').dataset.ref){ closeModal(); S.refKey=null; }
   if (g.status==='ended' && !S.endShown && !evBusy && !evQ.length){ S.endShown=true; showEnd(); }
 }
@@ -1034,7 +1050,7 @@ function showEv(e){
       SFX.whoosh(); setTimeout(()=>flashRoom(e.room),300); return 600;
     case 'sospecha':
       SFX.sus(); setTimeout(()=>flashRoom(e.room),400);
-      ov(`<h1>🔍 SOSPECHA</h1><div class="trio">${cardHTML(e.sus,'lg')}${cardHTML(e.wea,'lg')}${cardHTML(e.room,'lg')}</div>
+      ov(`<h1>🔍 SOSPECHA</h1><div class="big shake">${accImg(e.sus)}</div><div class="duo">${cardHTML(e.wea,'lg')}${cardHTML(e.room,'lg')}</div>
         <p><b>${esc(by?by.name:'')}</b> cree que fue <b>${NM(e.sus)}</b><br>con <b>${NM(e.wea)}</b> en <b>${NM(e.room)}</b></p>`, bc);
       return 4200;
     case 'refutado': {
@@ -1063,7 +1079,7 @@ function showEv(e){
       return 3800;
     case 'fin':
       SFX.win(); vib([100,50,100,50,300]);
-      ov(`<h1 style="--oc:#ffd23f">⚖️ CASO RESUELTO</h1><div class="trio">${cardHTML(g.sol.sus,'lg')}${cardHTML(g.sol.wea,'lg')}${cardHTML(g.sol.room,'lg')}</div>
+      ov(`<h1 style="--oc:#ffd23f">⚖️ CASO RESUELTO</h1><div class="big shake" style="margin:-10px 0 -6px">${accImg(g.sol.sus)}</div><div class="trio">${cardHTML(g.sol.sus,'lg')}${cardHTML(g.sol.wea,'lg')}${cardHTML(g.sol.room,'lg')}</div>
         <p>${by?`<b>${esc(by.name)}</b> ${e.ok?'ha descubierto al asesino':'gana por ser el último en pie'}`:'Nadie lo ha resuelto'}</p>`, '#ffd23f');
       return 5000;
     case 'turno':
