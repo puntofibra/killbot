@@ -1039,7 +1039,7 @@ function enterRoom(){ try{ sessionStorage.setItem('kb_in', S.code||''); }catch(e
 
 function onState(g){
   if (!g || g.ok===false) return;
-  if (g.gone){ toast('La partida ya no existe',1); clearSess(); S.code=null; return showMenu(); }
+  if (g.gone){ toast('⏳ La partida se ha cerrado (más de 1 hora sin actividad o ya no existe)',1); clearSess(); S.code=null; return showMenu(); }
   if (g.same) return;
   const prev = S.g; S.g = g; S.ver = g.ver; setTimeout(musSync,0);
   if (g.me) S.pid = g.me;
@@ -1912,7 +1912,7 @@ const Admin = (()=>{
 })();
 
 /* ═════════════ AUTO-ACTUALIZACIÓN ═════════════ */
-const APP_V = '28';
+const APP_V = '29';
 async function checkVersion(){
   try{
     const r = await fetch('version.json?t='+Date.now(), {cache:'no-store'}); if(!r.ok) return;

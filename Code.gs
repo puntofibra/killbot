@@ -485,14 +485,19 @@ var NM = {
 /* ═════════════════ UTILIDADES ═════════════════ */
 
 function cache_() { return CacheService.getScriptCache(); }
+var INACTIVIDAD_MS = 3600000;   // 1 hora sin que ningún jugador haga nada -> la partida se borra
 function load_(code) {
   if (!code) return null;
   var s = cache_().get('kb_' + code);
-  return s ? JSON.parse(s) : null;
+  if (!s) return null;
+  var g = JSON.parse(s);
+  if (Date.now() - (g.hAct || g.created || 0) > INACTIVIDAD_MS) { cache_().remove('kb_' + code); return null; }
+  return g;
 }
-function save_(g) {
+function save_(g, porBot) {
   g.ver = (g.ver || 0) + 1;
   g.upd = Date.now();
+  if (!porBot) g.hAct = Date.now();   // última actividad de una persona (los bots no cuentan)
   cache_().put('kb_' + g.code, JSON.stringify(g), 21600);
 }
 function lock_(fn) {
@@ -714,7 +719,7 @@ function estado(code, token, ver) {
     if (l.tryLock(300)) {
       try {
         g = load_(code);
-        if (g && botDue_(g)) { botStep_(g); save_(g); }
+        if (g && botDue_(g)) { botStep_(g); save_(g, true); }
       } finally { l.releaseLock(); }
     }
   }
