@@ -199,8 +199,8 @@ h2.t{font-family:Orbitron;font-weight:900;letter-spacing:2px;margin:0 0 14px;fon
 @keyframes holo{0%{background-position:150% 0}100%{background-position:-100% 0}}
 @keyframes dealIn{from{transform:translateY(30px) rotate(-8deg) scale(.8);opacity:0}}
 .back{background:linear-gradient(145deg,#2c3a55,#0b0f1d)}
-.back .in{background:repeating-linear-gradient(45deg,#0a1830 0 8px,#0d1f3d 8px 16px);justify-content:center}
-.back .in:after{content:"KB";font-family:Orbitron;font-weight:900;font-size:30px;color:var(--lucas);text-shadow:0 0 12px var(--lucas)}
+.back{padding:0;background:url(img/dorso.png) center/100% 100% no-repeat,#0b1430}
+.back .in{background:none}
 
 /* libreta */
 .nsec{margin-bottom:12px}
@@ -1386,6 +1386,25 @@ const Admin = (()=>{
 
   return { abrir, autorizar };
 })();
+
+/* ═════════════ AUTO-ACTUALIZACIÓN ═════════════ */
+const APP_V = '8';
+async function checkVersion(){
+  try{
+    const r = await fetch('version.json?t='+Date.now(), {cache:'no-store'}); if(!r.ok) return;
+    const v = String((await r.json()).v);
+    if (v && v !== APP_V){
+      const o=document.createElement('div'); o.className='ov'; o.style.zIndex=99;
+      o.innerHTML='<div class="spinner"></div><h1 style="font-size:28px">NUEVA VERSIÓN</h1><p>Actualizando la nave…</p>';
+      document.body.appendChild(o);
+      try{ const ks=await caches.keys(); await Promise.all(ks.map(k=>caches.delete(k))); }catch(e){}
+      setTimeout(()=>location.reload(), 1200);
+    }
+  }catch(e){}
+}
+setInterval(checkVersion, 60000);
+document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) checkVersion(); });
+setTimeout(checkVersion, 4000);
 
 /* ═════════════ ARRANQUE ═════════════ */
 (async function init(){
