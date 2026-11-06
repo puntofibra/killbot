@@ -269,7 +269,12 @@ h2.t{font-family:Orbitron;font-weight:900;letter-spacing:2px;margin:0 0 14px;fon
   background:linear-gradient(180deg,#0d1530,#060a18);border-top:2px solid var(--neon);box-shadow:0 -10px 50px rgba(34,228,255,.25);animation:up .35s cubic-bezier(.2,.9,.3,1) both}
 @keyframes up{from{transform:translateY(100%)}}
 .pick{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
-.pick .kcard{animation:none}
+.pick .kcard{animation:none;box-shadow:0 0 6px color-mix(in srgb,var(--c) 40%,transparent);transition:transform .15s}
+.pick .kcard .holo{display:none}
+.pick .kcard .art img{filter:none}
+.pick .kcard.sel{transform:translateY(-3px);box-shadow:0 0 0 3px #fff,0 0 16px var(--c)}
+.modal .box{contain:layout paint;-webkit-overflow-scrolling:touch}
+.kcard{contain:layout paint}
 .howto{font-size:16px;line-height:1.45;color:#d4e6ff}
 .howto h3{font-family:Orbitron;font-size:14px;color:var(--neon);letter-spacing:1px;margin:14px 0 4px}
 
@@ -1388,7 +1393,7 @@ const Admin = (()=>{
 })();
 
 /* ═════════════ AUTO-ACTUALIZACIÓN ═════════════ */
-const APP_V = '8';
+const APP_V = '9';
 async function checkVersion(){
   try{
     const r = await fetch('version.json?t='+Date.now(), {cache:'no-store'}); if(!r.ok) return;
