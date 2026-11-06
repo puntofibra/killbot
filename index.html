@@ -741,8 +741,8 @@ function musShould(){
   const p=musPref();
   if (g.modo==='tv') return !g.me ? p!=='0' : p==='1';   // en modo TV la música sale por la tele
   if (!g.me) return false;
-  if(p==='1') return true; if(p==='0') return false;
-  return g.musicPid===g.me;
+  if(p==='0') return false;
+  return true;   // la música viene activada por defecto en cada móvil; se quita con el botón 🎵
 }
 function musSync(){ if(S.screen==='tvauth'){ MUS.stop(); return; } const menu=!S.code || S.screen==='menu' || S.screen==='login'; const want = menu ? (AU.on && musPref()!=='0') : musShould(); want ? MUS.start() : MUS.stop(); const b=$('#bMus'); if(b) b.style.opacity=MUS.on?1:.45; }
 function setSound(on){ AU.on=on; try{ localStorage.setItem('kb_snd', on?'1':'0'); }catch(e){} const b=$('#bSnd'); if(b) b.textContent=on?'🔊':'🔇'; const m=$('#bSndM'); if(m) m.innerHTML=on?'🔊 Sonido':'🔇 Sin sonido'; }
