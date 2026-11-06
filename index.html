@@ -374,6 +374,33 @@ textarea.inp{resize:vertical;font-family:inherit}
 /* elegir sala: las alcanzables brillan, el resto se apaga */
 .board.choosing [data-room]:not(.reach){filter:grayscale(.85) brightness(.45);transition:filter .3s}
 .board.choosing [data-room].reach{animation:reach 1s ease-in-out infinite!important}
+/* giro de cartas */
+.flip{position:relative;aspect-ratio:2/3;perspective:900px;animation:flyIn .55s cubic-bezier(.2,.9,.3,1.2) both}
+.flip .fi{position:absolute;inset:0;transform-style:preserve-3d;transition:transform .7s cubic-bezier(.3,1.4,.5,1)}
+.flip.on .fi{transform:rotateY(180deg)}
+.flip .fb,.flip .ff{position:absolute;inset:0;backface-visibility:hidden;-webkit-backface-visibility:hidden}
+.flip .ff{transform:rotateY(180deg)}
+.flip .kcard{width:100%;height:100%;animation:none}
+.flip.lg{width:min(28vw,200px)}
+.flip.md{width:min(21vw,108px)}
+@keyframes flyIn{from{transform:translateY(-70vh) rotate(-25deg) scale(.6);opacity:0}}
+.ov .hand{display:flex;flex-wrap:wrap;gap:10px;justify-content:center;max-width:720px}
+.ov .hand .flip .kcard .holo{display:none}
+/* sobre secreto en el tablero */
+.sobre{position:absolute;left:50%;top:64.5%;width:11%;transform:translateX(-50%);display:flex;gap:4%;z-index:4;pointer-events:none}
+.sobre .flip{flex:1;width:auto;animation:none}
+.sobre .flip .kcard{padding:1px;border-radius:3px}
+.sobre .flip .kcard .in{border-radius:2px}
+.sobre .flip .kcard .nm,.sobre .flip .kcard .tp,.sobre .flip .kcard .holo{display:none}
+.sobre b{position:absolute;top:100%;left:50%;transform:translateX(-50%);margin-top:1px;font-family:Orbitron;font-size:min(1.6vw,.85vh);letter-spacing:1px;color:#ffd23f;white-space:nowrap;text-shadow:0 0 6px #000}
+.sobre .flip:nth-child(1){transform:rotate(-10deg)}.sobre .flip:nth-child(3){transform:rotate(10deg)}
+/* abanico de cartas de cada jugador */
+.fan{display:inline-flex;align-items:center;margin-left:8px;vertical-align:middle}
+.fan i{display:inline-block;width:13px;height:19px;margin-left:-7px;border-radius:2px;background:url(img/dorso.png) center/100% 100%,#0b1430;box-shadow:0 0 0 1px #000,0 1px 3px rgba(0,0,0,.6);transform:rotate(calc((var(--k) - var(--m)) * 7deg));transform-origin:50% 120%}
+.fan i:first-child{margin-left:0}
+.fan em{font-style:normal;margin-left:6px;font-size:12px;color:var(--mut)}
+.tvSide .fan i{width:2.2vh;height:3.3vh;margin-left:-1.2vh}
+.tvSide .fan em{font-size:1.8vh}
 /* imágenes de las animaciones: que nunca se salgan de la pantalla */
 .ov .big{max-width:100%;display:flex;justify-content:center}
 .ov .big .broken{max-width:100%}
@@ -496,6 +523,16 @@ function brokenFx(n){
 function cardHTML(id, cls=''){
   const x = ALL[id]; const tl = x.t==='sus'?'Sospechoso':x.t==='wea'?'Arma':'Sala';
   return `<div class="kcard ${cls}" data-id="${id}" style="--c:${x.c}"><div class="in"><div class="tp">${tl}</div><div class="art">${art(id)}</div><div class="nm">${x.n}</div></div><i class="holo"></i></div>`;
+}
+
+/* cartas que se giran */
+const backHTML = (cls='') => `<div class="kcard back ${cls}"><div class="in"></div></div>`;
+function flipHTML(id, cls='', delay=600, fly=0){
+  return `<div class="flip ${cls}" data-d="${delay}" style="${fly?`animation-delay:${fly}ms`:''}"><div class="fi"><div class="fb">${backHTML()}</div><div class="ff">${id?cardHTML(id):''}</div></div></div>`;
+}
+function armFlips(root, snd=true){
+  (root||document).querySelectorAll('.flip:not(.armed)').forEach(f=>{ f.classList.add('armed');
+    setTimeout(()=>{ f.classList.add('on'); if(snd) tone(880,.12,'triangle',.07,1320); }, +f.dataset.d||600); });
 }
 
 /* ═════════════ SONIDO (Web Audio) ═════════════ */
@@ -921,6 +958,7 @@ function buildBoard(el){
   ROOMS.forEach((r,i)=>{ const p=roomXY(i); h+=`<div class="room" data-room="${r.id}" style="left:${p.x}%;top:${p.y}%;--rc:${r.c}">${art(r.id)}<div class="rname">${r.n}</div></div>`; });
   SUS.forEach(s=>{ h+=`<div class="tok" id="tok_${s.id}" style="--c:${s.c};left:50%;top:50%"><i class="disc"></i>${art(s.id)}</div>`; });
   WEA.forEach(w=>{ h+=`<div class="wtok" id="wt_${w.id}" style="left:50%;top:50%">${art(w.id)}</div>`; });
+  h += `<div class="sobre" id="sobre">${flipHTML('', '', 0)}${flipHTML('', '', 0)}${flipHTML('', '', 0)}<b>SOBRE SECRETO</b></div>`;
   el.innerHTML = h;
   el.onclick = e=>{ const r=e.target.closest('[data-room]'); if (r && r.classList.contains('reach')){ SFX.whoosh(); act('mover',{room:r.dataset.room}); } };
 }
@@ -944,6 +982,11 @@ function updateBoard(){
   const mine = cur && cur.id===g.me && g.phase==='mover';
   const here = cur ? g.pos[cur.sus] : null;
   el.classList.toggle('choosing', !!mine);
+  const sb=$('#sobre');
+  if (sb && g.status==='ended' && g.sol && !sb.dataset.open){
+    sb.dataset.open=1; const fs=sb.querySelectorAll('.flip'); [g.sol.sus,g.sol.wea,g.sol.room].forEach((id,k)=>{ fs[k].querySelector('.ff').innerHTML=cardHTML(id); fs[k].classList.remove('armed'); fs[k].dataset.d=600+k*500; });
+    setTimeout(()=>armFlips(sb,false), 4500);
+  }
   el.querySelectorAll('[data-room]').forEach(r=>{
     r.classList.toggle('reach', !!(mine && g.reach.includes(r.dataset.room)));
     r.classList.toggle('here', r.dataset.room===here);
@@ -1085,9 +1128,10 @@ function openTab(t, refresh){
   if (t==='notes') bindNotes();
 }
 
+function fanHTML(n){ const k=Math.min(n,8), m=(k-1)/2; let h=''; for(let i=0;i<k;i++) h+=`<i style="--k:${i};--m:${m}"></i>`; return `<span class="fan">${h}<em>${n}</em></span>`; }
 function playersHTML(){
   const g=S.g; return `<div class="plist">${g.players.map((p,i)=>`<div class="pl" style="--c:${ALL[p.sus].c};${i===g.turn&&g.status==='playing'?'background:rgba(255,255,255,.1)':''}">${art(p.sus)}
-    <div class="n">${i===g.turn&&g.status==='playing'?'▶ ':''}${esc(p.name)}${p.id===g.me?' (tú)':''}</div><div class="tag">${!p.alive?'💀 ELIMINADO':(p.bot?'🤖 ':'')+p.n+' 🃏'}</div></div>`).join('')}</div>`;
+    <div class="n">${i===g.turn&&g.status==='playing'?'▶ ':''}${esc(p.name)}${p.id===g.me?' (tú)':''}</div><div class="tag">${!p.alive?'💀 ELIMINADO ':(p.bot?'🤖':'')}${fanHTML(p.n)}</div></div>`).join('')}</div>`;
 }
 
 const nKey = ()=>'kbn_'+S.code+'_'+S.pid;
@@ -1143,7 +1187,21 @@ function showEv(e){
       SFX.alarm(); vib([300,100,300]);
       ov(`<div class="alarm"></div><h1 style="--oc:#ff3b5c">🚨 ALERTA ROJA</h1><div class="big">${brokenFx(1)}</div>
         <p>${esc(PUB.intro||'Lucas ha sido desconectado a bordo de la KB-9. El asesino está entre la tripulación… ¡Descúbrelo!')}</p>`, '#ff3b5c');
+      evQ.unshift({type:'reparto'});
       return 5200;
+    case 'reparto': {
+      const hand=g.hand||[];
+      if (me && hand.length){
+        const o=ov(`<h1>🃏 TUS CARTAS</h1><div class="hand">${hand.map((c,k)=>flipHTML(c,'md',900+k*320,k*90)).join('')}</div>
+          <p style="font-size:clamp(15px,4vw,22px)">Estas cartas <b>NO</b> están en el sobre secreto. Ya están tachadas en tu 📝 libreta.</p>`, '#17ff5f');
+        for(let k=0;k<hand.length;k++) noise(.08,.08,k*.09);
+        armFlips(o); return 2200+hand.length*320;
+      }
+      const o=ov(`<h1>✉️ SOBRE SECRETO</h1><div class="trio">${backHTML('lg')}${backHTML('lg')}${backHTML('lg')}</div>
+        <p>Culpable, arma y sala quedan sellados en el sobre.<br>Las demás cartas se reparten entre la tripulación.</p>`, '#ffd23f');
+      o.querySelectorAll('.trio .kcard').forEach((c,k)=>c.style.animation=`flyIn .55s ${k*.15}s both`);
+      return 3600;
+    }
     case 'dado':
       SFX.dice();
       ov(`<div class="dice3d"><div class="cube"><div class="f1">${e.dice}</div><div class="f2">${(e.dice%6)+1}</div><div class="f3">${((e.dice+1)%6)+1}</div><div class="f4">${((e.dice+2)%6)+1}</div><div class="f5">${((e.dice+3)%6)+1}</div><div class="f6">${((e.dice+4)%6)+1}</div></div></div>
@@ -1160,8 +1218,8 @@ function showEv(e){
       const rf=pById(e.ref); const s=g.sug||{};
       if (me===e.by && s.shown){
         SFX.reveal(); vib(120);
-        ov(`<h1>🛡️ ¡DESMENTIDO!</h1><p><b>${esc(rf?rf.name:'')}</b> te enseña en secreto:</p><div class="trio">${cardHTML(s.shown,'lg')}</div><p style="font-size:16px;opacity:.7">Apuntada en tu libreta ✔</p>`, rf?ALL[rf.sus].c:'');
-        return 4200;
+        ov(`<h1>🛡️ ¡DESMENTIDO!</h1><p><b>${esc(rf?rf.name:'')}</b> te enseña en secreto:</p><div class="trio">${flipHTML(s.shown,'lg',900)}</div><p style="font-size:16px;opacity:.7">Apuntada en tu libreta ✔</p>`, rf?ALL[rf.sus].c:'');
+        armFlips($('#ov')); return 4600;
       }
       if (me===e.ref && s.shown){
         ov(`<h1>🛡️ CARTA ENSEÑADA</h1><p>Le has enseñado a <b>${esc(by?by.name:'')}</b>:</p><div class="trio">${cardHTML(s.shown,'lg')}</div>`, bc);
@@ -1182,9 +1240,9 @@ function showEv(e){
       return 3800;
     case 'fin':
       SFX.win(); vib([100,50,100,50,300]);
-      ov(`<h1 style="--oc:#ffd23f">⚖️ CASO RESUELTO</h1><div class="big shake" style="margin:-10px 0 -6px">${accImg(g.sol.sus)}</div><div class="trio">${cardHTML(g.sol.sus,'lg')}${cardHTML(g.sol.wea,'lg')}${cardHTML(g.sol.room,'lg')}</div>
+      ov(`<h1 style="--oc:#ffd23f">⚖️ CASO RESUELTO</h1><div class="big shake" style="margin:-10px 0 -6px">${accImg(g.sol.sus)}</div><div class="trio">${flipHTML(g.sol.sus,'lg',700)}${flipHTML(g.sol.wea,'lg',1200)}${flipHTML(g.sol.room,'lg',1700)}</div>
         <p>${by?`<b>${esc(by.name)}</b> ${e.ok?'ha descubierto al asesino':'gana por ser el último en pie'}`:'Nadie lo ha resuelto'}</p>`, '#ffd23f');
-      return 5000;
+      armFlips($('#ov')); return 5600;
     case 'turno':
       if (e.by===me){ SFX.turn(); vib([80,60,80]); toast('🎯 ¡Te toca!'); }
       return 250;
@@ -1481,7 +1539,7 @@ const Admin = (()=>{
 })();
 
 /* ═════════════ AUTO-ACTUALIZACIÓN ═════════════ */
-const APP_V = '13';
+const APP_V = '14';
 async function checkVersion(){
   try{
     const r = await fetch('version.json?t='+Date.now(), {cache:'no-store'}); if(!r.ok) return;
