@@ -745,7 +745,14 @@ function musShould(){
   return g.musicPid===g.me;
 }
 function musSync(){ if(S.screen==='tvauth'){ MUS.stop(); return; } const menu=!S.code || S.screen==='menu' || S.screen==='login'; const want = menu ? (AU.on && musPref()!=='0') : musShould(); want ? MUS.start() : MUS.stop(); const b=$('#bMus'); if(b) b.style.opacity=MUS.on?1:.45; }
-function musToggle(){ try{ localStorage.setItem('kb_mus', MUS.on?'0':'1'); }catch(e){} ac(); musSync(); toast(MUS.on?'🎵 Música activada':'🎵 Música desactivada'); }
+function setSound(on){ AU.on=on; try{ localStorage.setItem('kb_snd', on?'1':'0'); }catch(e){} const b=$('#bSnd'); if(b) b.textContent=on?'🔊':'🔇'; const m=$('#bSndM'); if(m) m.innerHTML=on?'🔊 Sonido':'🔇 Sin sonido'; }
+function musToggle(){
+  const turnOn = !MUS.on;
+  if (turnOn && !AU.on) setSound(true);          // si el sonido general estaba quitado, lo activa también
+  try{ localStorage.setItem('kb_mus', turnOn?'1':'0'); }catch(e){}
+  const c=ac(); if(c && c.state!=='running'){ try{ c.resume(); }catch(e){} }
+  musSync(); setTimeout(()=>toast(MUS.on?'🎵 Música activada':'🎵 Música desactivada'),60);
+}
 /* cada toque reactiva el audio si el navegador lo había pausado (pantalla completa, permisos, etc.) */
 ['pointerdown','touchend','keydown'].forEach(ev=>document.addEventListener(ev, ()=>{ const c=AU.ctx; if(c && c.state!=='running' && !document.hidden){ try{ c.resume(); }catch(e){} } if(!MUS.on) musSync(); }, true));
 /* en segundo plano no suena nada */
@@ -842,6 +849,7 @@ function showMenu(){
     <button class="btn gold" id="bWeb">🌐 Web del creador</button>
     ${!USER?`<button class="btn ghost sm" id="bLog" style="align-self:center">👤 Iniciar sesión</button>`:''}
     <div class="row"><button class="btn ghost sm" id="bHow">📖 Cómo se juega</button><button class="btn ghost sm" id="bInst">📲 Instalar</button><button class="btn ghost sm" id="bShare">📤 Compartir</button></div>
+    <button class="btn ghost sm" id="bSndM" style="align-self:center">${AU.on?'🔊 Sonido':'🔇 Sin sonido'}</button>
     <div class="foot">FuturMovil · KILLBOT</div>
   </div></div>`;
   if (s) $('#bCont').onclick = ()=>{ Object.assign(S,{code:s.code,token:s.token,pid:s.pid,modo:s.modo}); enterRoom(); };
@@ -853,6 +861,7 @@ function showMenu(){
   if ($('#bLog')) $('#bLog').onclick = ()=>showLogin();
   $('#bTv').onclick = ()=>{ SFX.click(); tvAviso(()=>create('tv',''), ()=>create('movil', USER?USER.user.nombre:'')); };
   $('#bJoin').onclick = ()=>{ SFX.click(); showJoin(''); };
+  $('#bSndM').onclick = ()=>{ setSound(!AU.on); if(AU.on){ ac(); SFX.click(); } musSync(); toast(AU.on?'🔊 Sonido activado':'🔇 Sonido desactivado'); };
   $('#bWeb').onclick = ()=>{ SFX.click(); MUS.stop(); location.href='https://puntofibra.github.io/web/'; };
   $('#bHow').onclick = ()=>{ SFX.click(); howTo(); };
   $('#bShare').onclick = ()=>share(BASE, '🤖💀 Juega conmigo a KILLBOT, el cluedo espacial:');
@@ -1157,7 +1166,7 @@ function buildGame(){
       <div id="drawer" class="drawer"></div></div>`;
     app.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>{ SFX.click(); openTab(S.tab===b.dataset.t?null:b.dataset.t); });
     $('#bMus').onclick = musToggle;
-    $('#bSnd').onclick = ()=>{ AU.on=!AU.on; setTimeout(musSync,0); try{localStorage.setItem('kb_snd',AU.on?'1':'0');}catch(e){} $('#bSnd').textContent=AU.on?'🔊':'🔇'; };
+    $('#bSnd').onclick = ()=>{ setSound(!AU.on); setTimeout(musSync,0); return; try{localStorage.setItem('kb_snd',AU.on?'1':'0');}catch(e){} $('#bSnd').textContent=AU.on?'🔊':'🔇'; };
     $('#bMenu').onclick = ()=>modal(`<h2 class="t">Menú</h2><div style="display:flex;flex-direction:column;gap:10px">
       <button class="btn" onclick="closeModal();howTo()">📖 Cómo se juega</button>
       <button class="btn" onclick="share(joinUrl(S.code),'Partida KILLBOT ' + S.code + ':')">📤 Compartir sala</button>
@@ -1912,7 +1921,7 @@ const Admin = (()=>{
 })();
 
 /* ═════════════ AUTO-ACTUALIZACIÓN ═════════════ */
-const APP_V = '29';
+const APP_V = '30';
 async function checkVersion(){
   try{
     const r = await fetch('version.json?t='+Date.now(), {cache:'no-store'}); if(!r.ok) return;
