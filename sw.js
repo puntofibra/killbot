@@ -1,5 +1,5 @@
 /* KILLBOT · service worker: página siempre fresca, imágenes en caché */
-const C = 'killbot-v1';
+const C = 'killbot-v2';
 self.addEventListener('install', e => { self.skipWaiting(); e.waitUntil(caches.open(C).then(c => c.addAll(['./', 'index.html', 'manifest.json', 'icon192.png', 'js/qrcode.min.js']).catch(() => {}))); });
 self.addEventListener('activate', e => e.waitUntil(caches.keys().then(k => Promise.all(k.filter(x => x !== C).map(x => caches.delete(x)))).then(() => self.clients.claim())));
 self.addEventListener('fetch', e => {
