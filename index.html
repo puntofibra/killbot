@@ -1119,6 +1119,7 @@ function renderTvLobby(){
         <button class="btn" id="bBot" ${g.players.length>=9?'disabled':''}>🤖 Añadir bot</button>
         <button class="btn green" id="bGo" ${g.players.length<2?'disabled':''}>▶ Empezar</button>
       </div>
+      <button class="btn ghost sm" id="bExitTv" style="flex:none;margin-top:10px">← Volver al menú</button>
     </div>
     <div class="slots">${SUS.map(s=>{ const o=owner[s.id];
       return `<div class="slot ${o?'on':'off'}" style="--c:${s.c}">${botFx(s.id)}<div class="nm">${s.n}</div><div class="ow">${o?esc(o.name)+(o.bot?' 🤖':''):'—'}</div></div>`; }).join('')}</div>
@@ -1126,6 +1127,7 @@ function renderTvLobby(){
   drawQR($('#qr'), url, Math.round(innerHeight*.34));
   $('#bBot').onclick = async()=>{ SFX.click(); try{ onState(await G('bot')); }catch(e){toast(errMsg(e),1);} };
   $('#bGo').onclick = startGame;
+  $('#bExitTv').onclick = ()=>{ SFX.click(); kbConfirm('Se cancelará esta partida y volverás al menú principal.',{title:'¿Cancelar la partida?',icon:'🚪',ok:'Volver al menú',danger:true,color:'var(--red)'}).then(v=>v&&exitGame()); };
 }
 
 function drawQR(el, text, size){
