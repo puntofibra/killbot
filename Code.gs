@@ -555,7 +555,7 @@ function crearSala(modo, nombre, user) {
       hostEmail: user ? user.email : '', hostName: user ? user.nombre : ''
     };
     var res = { code: code, token: host, modo: g.modo };
-    if (g.modo === 'movil') res.pid = newPlayer_(g, nombre, false, host).id;
+    if (g.modo === 'movil') { res.pid = newPlayer_(g, nombre, false, host).id; g.musicPid = res.pid; }
     save_(g);
     addIdx_(code);
     return res;
@@ -570,6 +570,7 @@ function unirse(code, nombre) {
     if (g.status !== 'lobby') err_('Esa partida ya ha empezado');
     if (g.players.length >= aj_('maxJug')) err_('La sala está llena');
     var p = newPlayer_(g, nombre, false);
+    if (!g.musicPid) g.musicPid = p.id;
     log_(g, p.name + ' ha subido a bordo');
     save_(g);
     return { code: code, token: p.token, pid: p.id, modo: g.modo };
@@ -621,6 +622,7 @@ function quitarJugador(code, token, pid) {
     if (g.host !== token && !(me && me.id === pid)) err_('Solo el anfitrión puede expulsar');
     if (g.status !== 'lobby') err_('La partida ya ha empezado');
     g.players = g.players.filter(function (p) { return p.id !== pid || p.token === g.host; });
+    if (!byId_(g, g.musicPid)) { var h = g.players.filter(function (p) { return !p.bot; })[0]; g.musicPid = h ? h.id : null; }
     save_(g);
     return view_(g, token);
   });
@@ -698,7 +700,7 @@ function view_(g, token) {
   var v = {
     code: g.code, modo: g.modo, status: g.status, ver: g.ver, evn: g.evn, ev: g.ev, log: g.log,
     isHost: g.host === token, me: me ? me.id : null, turn: g.turn, phase: g.phase,
-    dice: g.dice, reach: g.reach || [], pos: g.pos, wpos: g.wpos, winner: g.winner, now: Date.now()
+    dice: g.dice, reach: g.reach || [], pos: g.pos, wpos: g.wpos, winner: g.winner, musicPid: g.musicPid || null, now: Date.now()
   };
   v.players = g.players.map(function (p) {
     return { id: p.id, name: p.name, sus: p.sus, bot: p.bot, alive: p.alive, summoned: p.summoned, n: p.hand.length, host: p.token === g.host };

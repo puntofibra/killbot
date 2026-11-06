@@ -521,6 +521,72 @@ const SFX = {
 };
 document.addEventListener('pointerdown', ()=>ac(), {once:true});
 
+
+/* ═════════════ MÚSICA DE FONDO (Web Audio, sin MP3) ═════════════ */
+const MUS = (()=>{
+  let on=false, timer=null, step=0, nextT=0, master=null, comp=null;
+  const BPM=96, S16=60/BPM/4;
+  // Progresión misteriosa en La menor: Am - F - Dm - E
+  const CH=[[57,60,64],[53,57,60],[50,53,57],[52,56,59]];
+  const BASS=[45,41,38,40];
+  const ARP=[0,1,2,1,0,2,1,2, 0,1,2,1,0,2,1,0];
+  const LEAD=[76,null,74,72,null,71,72,null, 69,null,null,71,72,null,74,null, 76,null,77,76,null,74,72,null, 71,null,72,null,68,null,null,null];
+  const hz=m=>440*Math.pow(2,(m-69)/12);
+  function init(){
+    const c=ac(); if(!c) return null;
+    if(!master){ comp=c.createDynamicsCompressor(); master=c.createGain(); master.gain.value=0; master.connect(comp); comp.connect(c.destination); }
+    return c;
+  }
+  function osc(c,type,f,t,d,v,cut,det){
+    const o=c.createOscillator(), g=c.createGain(), fl=c.createBiquadFilter();
+    o.type=type; o.frequency.setValueAtTime(f,t); if(det) o.detune.value=det;
+    fl.type='lowpass'; fl.frequency.setValueAtTime(cut||3000,t);
+    g.gain.setValueAtTime(0.0001,t); g.gain.exponentialRampToValueAtTime(v,t+Math.min(.02,d/4)); g.gain.exponentialRampToValueAtTime(0.0001,t+d);
+    o.connect(fl); fl.connect(g); g.connect(master); o.start(t); o.stop(t+d+.05);
+  }
+  function pad(c,notes,t,d){
+    notes.forEach(n=>[-8,8].forEach(det=>{
+      const o=c.createOscillator(), g=c.createGain(), fl=c.createBiquadFilter();
+      o.type='sawtooth'; o.frequency.value=hz(n); o.detune.value=det; fl.type='lowpass'; fl.frequency.value=900;
+      g.gain.setValueAtTime(0.0001,t); g.gain.linearRampToValueAtTime(.022,t+d*.35); g.gain.linearRampToValueAtTime(0.0001,t+d);
+      o.connect(fl); fl.connect(g); g.connect(master); o.start(t); o.stop(t+d+.05);
+    }));
+  }
+  function kick(c,t){ const o=c.createOscillator(), g=c.createGain(); o.frequency.setValueAtTime(140,t); o.frequency.exponentialRampToValueAtTime(40,t+.15);
+    g.gain.setValueAtTime(.5,t); g.gain.exponentialRampToValueAtTime(.0001,t+.25); o.connect(g); g.connect(master); o.start(t); o.stop(t+.3); }
+  function hat(c,t,v){ const b=c.createBuffer(1,c.sampleRate*.05,c.sampleRate), a=b.getChannelData(0); for(let i=0;i<a.length;i++) a[i]=(Math.random()*2-1)*(1-i/a.length);
+    const s=c.createBufferSource(), f=c.createBiquadFilter(), g=c.createGain(); f.type='highpass'; f.frequency.value=7000; g.gain.value=v; s.buffer=b; s.connect(f); f.connect(g); g.connect(master); s.start(t); }
+  function sched(){
+    const c=ac(); if(!c) return;
+    while(nextT < c.currentTime+0.25){
+      const bar=Math.floor(step/16)%4, s=step%16, sec=Math.floor(step/64)%4, t=nextT, ch=CH[bar];
+      if(s===0) pad(c,ch,t,S16*16);
+      if(s%4===0||s===10) osc(c,'sawtooth',hz(BASS[bar]),t,S16*1.8,.16,420);
+      if(sec>0) osc(c,'square',hz(ch[ARP[s]]+12),t,S16*.9,.035,2200);
+      if(sec>0 && (s===0||s===8)) kick(c,t);
+      if(sec>0 && s%2===1) hat(c,t,s%4===3?.05:.025);
+      if(sec>=2){ const ln=LEAD[(Math.floor(step/2))%32]; if(step%2===0 && ln) osc(c,'triangle',hz(ln),t,S16*3,.06,4000,4); }
+      nextT+=S16; step++;
+    }
+  }
+  function start(){ const c=init(); if(!c||on) return; on=true; step=0; nextT=c.currentTime+.1;
+    master.gain.cancelScheduledValues(c.currentTime); master.gain.setValueAtTime(master.gain.value,c.currentTime); master.gain.linearRampToValueAtTime(.55,c.currentTime+2);
+    timer=setInterval(sched,60); sched(); }
+  function stop(){ if(!on) return; on=false; clearInterval(timer); const c=ac(); if(c&&master){ master.gain.cancelScheduledValues(c.currentTime); master.gain.setValueAtTime(master.gain.value,c.currentTime); master.gain.linearRampToValueAtTime(0,c.currentTime+.8); } }
+  return { start, stop, get on(){ return on; } };
+})();
+function musPref(){ try{ return localStorage.getItem('kb_mus'); }catch(e){ return null; } }
+function musShould(){
+  const g=S.g; if(!g || !g.me || !AU.on) return false;
+  if (g.status!=='lobby' && g.status!=='playing' && g.status!=='ended') return false;
+  const p=musPref(); if(p==='1') return true; if(p==='0') return false;
+  return g.musicPid===g.me;
+}
+function musSync(){ if(!S.code || S.screen==='menu' || S.screen==='login'){ MUS.stop(); return; } musShould() ? MUS.start() : MUS.stop(); const b=$('#bMus'); if(b) b.style.opacity=MUS.on?1:.45; }
+function musToggle(){ try{ localStorage.setItem('kb_mus', MUS.on?'0':'1'); }catch(e){} ac(); musSync(); toast(MUS.on?'🎵 Música activada':'🎵 Música desactivada'); }
+document.addEventListener('pointerdown', ()=>{ if(!MUS.on) musSync(); });
+document.addEventListener('visibilitychange', ()=>{ const c=AU.ctx; if(!c) return; document.hidden ? c.suspend() : c.resume(); });
+
 /* ═════════════ ESTRELLAS ═════════════ */
 (function(){
   const cv = document.getElementById('stars'), x = cv.getContext('2d'); let W,H,st=[],sh=null;
@@ -570,7 +636,7 @@ function clearSess(){ try{ localStorage.removeItem('kb_sess'); }catch(e){} }
 function logoHTML(){ return `<div class="logo">${FAILED.has('logo')?`<div class="logoTxt" data-t="KILLBOT">KILLBOT</div>`:`<img class="lg" src="${IMG}logo.png" onerror="this.outerHTML='<div class=&quot;logoTxt&quot; data-t=&quot;KILLBOT&quot;>KILLBOT</div>'">`}<div class="sub">ASESINATO EN LA NAVE KB-9</div></div>`; }
 
 function showMenu(){
-  S.screen='menu'; stopPoll();
+  S.screen='menu'; stopPoll(); MUS.stop();
   const s = loadSess();
   app.innerHTML = `<div class="screen"><div class="menu">
     ${logoHTML()}
@@ -707,7 +773,7 @@ function onState(g){
   if (!g || g.ok===false) return;
   if (g.gone){ toast('La partida ya no existe',1); clearSess(); S.code=null; return showMenu(); }
   if (g.same) return;
-  const prev = S.g; S.g = g; S.ver = g.ver;
+  const prev = S.g; S.g = g; S.ver = g.ver; setTimeout(musSync,0);
   if (g.me) S.pid = g.me;
   if (g.status==='lobby'){
     if (S.screen!=='lobby') S.endShown=false;
@@ -748,7 +814,7 @@ function renderLobby(){
     ${amHost()?`<div class="row"><button class="btn" id="bBot" ${g.players.length>=9?'disabled':''}>🤖 Añadir bot</button></div>
       <button class="btn big green" id="bGo" ${g.players.length<2?'disabled':''}>▶ Empezar partida</button>`
       :`<div class="glass" style="padding:16px;text-align:center;font-size:17px">⏳ Esperando a que el anfitrión empiece…</div>`}
-    <button class="btn ghost sm" id="bExit" style="align-self:center">Salir</button>
+    <div class="row" style="justify-content:center"><button class="btn ghost sm" id="bMusL" style="flex:none">🎵 Música</button><button class="btn ghost sm" id="bExit" style="flex:none">Salir</button></div>
   </div></div>`;
   drawQR($('#qr'), url, 116);
   $('#bShare').onclick = ()=>share(url, '🤖💀 ¡Únete a mi partida de KILLBOT! Código ' + g.code + ':');
@@ -760,6 +826,7 @@ function renderLobby(){
   if ($('#bBot')) $('#bBot').onclick = async()=>{ SFX.click(); try{ onState(await G('bot')); }catch(e){toast(errMsg(e),1);} };
   if ($('#bGo')) $('#bGo').onclick = startGame;
   $('#bExit').onclick = exitGame;
+  $('#bMusL').onclick = musToggle;
 }
 
 function renderTvLobby(){
@@ -815,13 +882,14 @@ function buildGame(){
       </div></div>`;
   } else {
     app.innerHTML = `<div class="game ph">
-      <div class="gbar"><div class="cd">${S.g.code}</div><div id="turnB" class="turnB"></div><button class="ib" id="bSnd">${AU.on?'🔊':'🔇'}</button><button class="ib" id="bMenu">☰</button></div>
+      <div class="gbar"><div class="cd">${S.g.code}</div><div id="turnB" class="turnB"></div><button class="ib" id="bMus" style="opacity:${MUS.on?1:.45}">🎵</button><button class="ib" id="bSnd">${AU.on?'🔊':'🔇'}</button><button class="ib" id="bMenu">☰</button></div>
       <div class="boardWrap"><div id="board" class="board"></div></div>
       <div id="panel" class="panel"></div>
       <nav class="tabs"><button data-t="hand">🃏 Cartas</button><button data-t="notes">📝 Libreta</button><button data-t="log">📜 Registro</button><button data-t="players">👥 Equipo</button></nav>
       <div id="drawer" class="drawer"></div></div>`;
     app.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>{ SFX.click(); openTab(S.tab===b.dataset.t?null:b.dataset.t); });
-    $('#bSnd').onclick = ()=>{ AU.on=!AU.on; try{localStorage.setItem('kb_snd',AU.on?'1':'0');}catch(e){} $('#bSnd').textContent=AU.on?'🔊':'🔇'; };
+    $('#bMus').onclick = musToggle;
+    $('#bSnd').onclick = ()=>{ AU.on=!AU.on; setTimeout(musSync,0); try{localStorage.setItem('kb_snd',AU.on?'1':'0');}catch(e){} $('#bSnd').textContent=AU.on?'🔊':'🔇'; };
     $('#bMenu').onclick = ()=>modal(`<h2 class="t">Menú</h2><div style="display:flex;flex-direction:column;gap:10px">
       <button class="btn" onclick="closeModal();howTo()">📖 Cómo se juega</button>
       <button class="btn" onclick="share(joinUrl(S.code),'Partida KILLBOT ' + S.code + ':')">📤 Compartir sala</button>
@@ -1393,7 +1461,7 @@ const Admin = (()=>{
 })();
 
 /* ═════════════ AUTO-ACTUALIZACIÓN ═════════════ */
-const APP_V = '9';
+const APP_V = '10';
 async function checkVersion(){
   try{
     const r = await fetch('version.json?t='+Date.now(), {cache:'no-store'}); if(!r.ok) return;
@@ -1403,6 +1471,7 @@ async function checkVersion(){
       o.innerHTML='<div class="spinner"></div><h1 style="font-size:28px">NUEVA VERSIÓN</h1><p>Actualizando la nave…</p>';
       document.body.appendChild(o);
       try{ const ks=await caches.keys(); await Promise.all(ks.map(k=>caches.delete(k))); }catch(e){}
+      try{ if(S.code) sessionStorage.setItem('kb_upd','1'); }catch(e){}
       setTimeout(()=>location.reload(), 1200);
     }
   }catch(e){}
@@ -1423,6 +1492,8 @@ setTimeout(checkVersion, 4000);
     if (s && s.code===SALA0){ Object.assign(S,{code:s.code,token:s.token,pid:s.pid,modo:s.modo}); return enterRoom(); }
     return showJoin(SALA0);
   }
+  let upd=false; try{ upd=sessionStorage.getItem('kb_upd')==='1'; sessionStorage.removeItem('kb_upd'); }catch(e){}
+  if (upd && s){ Object.assign(S,{code:s.code,token:s.token,pid:s.pid,modo:s.modo}); return enterRoom(); }
   if (MODO0==='tv') return create('tv','');
   showMenu();
 })();
