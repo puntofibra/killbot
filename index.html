@@ -683,10 +683,14 @@ const MUS = (()=>{
     }
   }
   function start(){ const c=init(); if(!c||on) return; on=true; step=0; nextT=c.currentTime+.1;
-    master.gain.cancelScheduledValues(c.currentTime); master.gain.setValueAtTime(master.gain.value,c.currentTime); master.gain.linearRampToValueAtTime(.55,c.currentTime+2);
+    master.gain.cancelScheduledValues(c.currentTime); master.gain.setValueAtTime(master.gain.value,c.currentTime); master.gain.linearRampToValueAtTime(ducked?.55*.5:.55,c.currentTime+2);
     timer=setInterval(sched,60); sched(); }
   function stop(){ if(!on) return; on=false; clearInterval(timer); const c=ac(); if(c&&master){ master.gain.cancelScheduledValues(c.currentTime); master.gain.setValueAtTime(master.gain.value,c.currentTime); master.gain.linearRampToValueAtTime(0,c.currentTime+.8); } }
-  return { start, stop, get on(){ return on; } };
+  let ducked=false;
+  /* baja la música a la mitad mientras habla el narrador, de forma gradual */
+  function duck(d){ ducked=d; const c=AU.ctx; if(!on||!c||!master) return; const t=c.currentTime;
+    master.gain.cancelScheduledValues(t); master.gain.setValueAtTime(master.gain.value,t); master.gain.linearRampToValueAtTime(d?.55*.5:.55, t+(d?.5:1.2)); }
+  return { start, stop, duck, get on(){ return on; } };
 })();
 function musPref(){ try{ return localStorage.getItem('kb_mus'); }catch(e){ return null; } }
 function musShould(){
@@ -1350,7 +1354,7 @@ setInterval(()=>{ const t=document.getElementById('aeT'); if(t) t.textContent=Ma
 
 /* ═════════════ NARRADOR (voz del navegador) ═════════════ */
 const VOZ = (()=>{
-  let voice=null;
+  let voice=null, talking=0;
   const pick=()=>{ const vs=(window.speechSynthesis&&speechSynthesis.getVoices())||[]; const es=vs.filter(v=>/^es/i.test(v.lang));
     const pref=[/google.*espa/i,/microsoft.*(elvira|alvaro|helena|laura|pablo)/i,/(monica|mónica|paulina|jorge|marisol)/i,/es-ES/i];
     for(const r of pref){ const v=es.find(v=>r.test(v.name)||r.test(v.lang)); if(v) return v; } return es[0]||null; };
@@ -1358,9 +1362,12 @@ const VOZ = (()=>{
   function say(txt){
     if(!window.speechSynthesis || !txt || document.hidden || !vozOn()) return;
     const u=new SpeechSynthesisUtterance(txt); u.lang=(voice&&voice.lang)||'es-ES'; if(voice) u.voice=voice; u.rate=1.02; u.pitch=1; u.volume=1;
+    talking++; MUS.duck(true);
+    const done=()=>{ if(u._d) return; u._d=1; talking=Math.max(0,talking-1); if(!talking) setTimeout(()=>{ if(!talking) MUS.duck(false); },250); };
+    u.onend=done; u.onerror=done; setTimeout(done, 4000+txt.length*90);   // por si el navegador no avisa del final
     speechSynthesis.speak(u);
   }
-  function stop(){ try{ speechSynthesis.cancel(); }catch(e){} }
+  function stop(){ try{ speechSynthesis.cancel(); }catch(e){} talking=0; MUS.duck(false); }
   return { say, stop };
 })();
 function vozPref(){ try{ return localStorage.getItem('kb_voz'); }catch(e){ return null; } }
@@ -1840,7 +1847,7 @@ const Admin = (()=>{
 })();
 
 /* ═════════════ AUTO-ACTUALIZACIÓN ═════════════ */
-const APP_V = '24';
+const APP_V = '25';
 async function checkVersion(){
   try{
     const r = await fetch('version.json?t='+Date.now(), {cache:'no-store'}); if(!r.ok) return;
