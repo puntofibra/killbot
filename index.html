@@ -371,6 +371,11 @@ textarea.inp{resize:vertical;font-family:inherit}
 @keyframes spark{0%{opacity:0;transform:translate(0,0) scale(1)}8%{opacity:1}40%{opacity:0;transform:translate(var(--dx),var(--dy)) scale(.3)}100%{opacity:0}}
 .broken .sm{position:absolute;width:40px;height:40px;border-radius:50%;background:radial-gradient(rgba(180,190,200,.55),transparent 70%);z-index:3;opacity:0;animation:smoke 3.4s infinite}
 @keyframes smoke{0%{opacity:0;transform:translateY(0) scale(.4)}20%{opacity:.8}100%{opacity:0;transform:translateY(-110px) scale(2.4)}}
+/* imágenes de las animaciones: que nunca se salgan de la pantalla */
+.ov .big{max-width:100%;display:flex;justify-content:center}
+.ov .big .broken{max-width:100%}
+.ov .big img{max-width:min(92vw,640px)!important;object-fit:contain}
+.ov .big .broken img{height:auto!important;width:auto;max-height:min(38vh,320px)}
 </style>
 </head>
 <body>
@@ -779,7 +784,7 @@ function onState(g){
     if (S.screen!=='lobby') S.endShown=false;
     S.lastEv = g.evn; renderLobby(); return;
   }
-  if (S.screen!=='game'){ buildGame(); if (S.lastEv==null) S.lastEv = g.evn; else if (prev && prev.status==='lobby') {} }
+  if (S.screen!=='game'){ buildGame(); }
   handleEvents(g);
   updateGame(prev);
 }
@@ -1107,7 +1112,7 @@ function updateTvSide(){
 /* ═════════════ EVENTOS / CINEMÁTICAS ═════════════ */
 let evQ=[], evBusy=false;
 function handleEvents(g){
-  if (S.lastEv==null){ S.lastEv=g.evn; return; }
+  if (S.lastEv==null){ S.lastEv=g.evn; g.ev.filter(e=>e.type==='inicio' && g.now-e.t<10000).forEach(e=>evQ.push(e)); playNext(); return; }
   g.ev.filter(e=>e.n>S.lastEv).forEach(e=>evQ.push(e));
   S.lastEv = g.evn;
   while (evQ.length>4) evQ.shift();
@@ -1472,7 +1477,7 @@ const Admin = (()=>{
 })();
 
 /* ═════════════ AUTO-ACTUALIZACIÓN ═════════════ */
-const APP_V = '11';
+const APP_V = '12';
 async function checkVersion(){
   try{
     const r = await fetch('version.json?t='+Date.now(), {cache:'no-store'}); if(!r.ok) return;
