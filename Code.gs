@@ -672,7 +672,7 @@ function deal_(g) {
     return c !== sol.sus && c !== sol.wea && c !== sol.room;
   }));
   g.players = shuffle_(g.players);
-  g.players.forEach(function (p) { p.hand = []; p.seen = []; p.alive = true; p.summoned = false; p.sawSol = false; });
+  g.players.forEach(function (p) { p.hand = []; p.seen = []; p.seenBy = {}; p.alive = true; p.summoned = false; p.sawSol = false; });
   deck.forEach(function (c, i) { g.players[i % g.players.length].hand.push(c); });
   g.sol = sol;
   g.pos = {};
@@ -732,7 +732,7 @@ function view_(g, token) {
   v.players = g.players.map(function (p) {
     return { id: p.id, name: p.name, sus: p.sus, bot: p.bot, alive: p.alive, summoned: p.summoned, n: p.hand.length, host: p.token === g.host };
   });
-  if (me) { v.hand = me.hand; v.seen = me.seen; }
+  if (me) { v.hand = me.hand; v.seen = me.seen; v.seenBy = me.seenBy || {}; }
   if (g.sug) {
     var s = g.sug;
     v.sug = { by: s.by, sus: s.sus, wea: s.wea, room: s.room, refuter: s.refuter, result: s.result, deadline: s.deadline };
@@ -865,6 +865,7 @@ function show_(g, q, card) {
   g.phase = 'accion';
   g.autoEnd = Date.now() + 18000;   // ya ha visto la carta: el turno pasa solo (incluye las animaciones)
   if (by.seen.indexOf(card) < 0) by.seen.push(card);
+  by.seenBy = by.seenBy || {}; by.seenBy[card] = q.name;
   q.shownTo = q.shownTo || {};
   q.shownTo[by.id] = q.shownTo[by.id] || [];
   if (q.shownTo[by.id].indexOf(card) < 0) q.shownTo[by.id].push(card);

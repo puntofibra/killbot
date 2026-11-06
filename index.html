@@ -448,6 +448,7 @@ textarea.inp{resize:vertical;font-family:inherit}
 .pick .kcard.known.sel{filter:grayscale(.6) brightness(.8)}
 .kTag{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) rotate(-18deg);padding:3px 8px;border:2px solid #fff;border-radius:6px;font-family:Orbitron;font-weight:900;font-size:11px;letter-spacing:2px;color:#fff;background:rgba(0,0,0,.55);z-index:3;pointer-events:none}
 /* avisos */
+.seenBy{text-align:center;font-size:11px;color:var(--mut);margin-top:3px;font-family:Orbitron}
 .kbc{position:fixed;inset:0;z-index:95;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(0,0,0,.72);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);animation:ovIn .2s both}
 .kbc.out{animation:ovOut .25s both}
 .kbcBox{width:100%;max-width:380px;padding:22px 18px 16px;border-radius:22px;text-align:center;background:linear-gradient(180deg,#101a38,#060a18);border:1px solid var(--kc);box-shadow:0 0 30px color-mix(in srgb,var(--kc) 40%,transparent),inset 0 0 20px color-mix(in srgb,var(--kc) 12%,transparent);animation:zoomIn .35s cubic-bezier(.2,1.4,.4,1) both;position:relative;overflow:hidden}
@@ -753,9 +754,13 @@ const app = $('#app'), fx = $('#fx');
 const esc = s => String(s==null?'':s).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 let toastT;
 function toast(m, err){ const t=$('#toast'); t.textContent=m; t.className=(err?'err ':'')+'on'; clearTimeout(toastT); toastT=setTimeout(()=>t.className='',3200); }
-function api(accion, d){
-  return fetch(CFG.API, {method:'POST', body: JSON.stringify(Object.assign({accion}, d||{}))})
-    .then(r=>r.json()).catch(()=>({ok:false, error:'Sin conexión. Inténtalo otra vez.'}));
+function api(accion, d, ms){
+  /* con tiempo límite: si la red se cuelga, la petición se corta y el juego sigue actualizándose */
+  const ctl = window.AbortController ? new AbortController() : null;
+  const tm = setTimeout(()=>{ try{ ctl && ctl.abort(); }catch(e){} }, ms || (accion==='estado' ? 9000 : 25000));
+  return fetch(CFG.API, {method:'POST', body: JSON.stringify(Object.assign({accion}, d||{})), signal: ctl ? ctl.signal : undefined})
+    .then(r=>r.json()).catch(()=>({ok:false, error:'Sin conexión. Inténtalo otra vez.'}))
+    .finally(()=>clearTimeout(tm));
 }
 async function call(accion, d){
   const r = await api(accion, d);
@@ -952,11 +957,15 @@ function closeModal(){ const m=$('#modal'); if(m) m.remove(); }
 let pollT=null, polling=false;
 function startPoll(){ stopPoll(); pollT=setInterval(poll, 1100); poll(); }
 function stopPoll(){ if(pollT) clearInterval(pollT); pollT=null; }
+let pollSince=0, lastOk=Date.now();
 async function poll(){
-  if (polling || !S.code) return; polling=true;
-  try{ const g = await api('estado', {code:S.code, tk:S.token, ver:S.ver}); onState(g); }
-  catch(e){} finally{ polling=false; }
+  if (polling && Date.now()-pollSince < 12000) return;   // vigilante: nunca se queda bloqueado
+  if (!S.code) return; polling=true; pollSince=Date.now();
+  try{ const g = await api('estado', {code:S.code, tk:S.token, ver:S.ver}); if (g && g.ok!==false){ lastOk=Date.now(); onState(g); } }
+  catch(e){ console.error(e); } finally{ polling=false; }
+  if (Date.now()-lastOk > 20000 && S.g){ S.ver=0; lastOk=Date.now(); }   // fuerza estado completo
 }
+document.addEventListener('visibilitychange', ()=>{ if(!document.hidden && S.code){ S.ver=0; polling=false; poll(); } });
 function enterRoom(){ try{ sessionStorage.setItem('kb_in', S.code||''); }catch(e){} S.ver=0; S.g=null; S.lastEv=null; S.endShown=false; S.screen=''; loading('Conectando…'); startPoll(); }
 
 function onState(g){
@@ -970,8 +979,8 @@ function onState(g){
     S.lastEv = g.evn; renderLobby(); return;
   }
   if (S.screen!=='game'){ buildGame(); }
-  handleEvents(g);
-  updateGame(prev);
+  try{ handleEvents(g); }catch(e){ console.error(e); evBusy=false; }
+  try{ updateGame(prev); }catch(e){ console.error(e); }
 }
 
 function amHost(){ return S.g && S.g.isHost; }
@@ -1290,7 +1299,7 @@ function openTab(t, refresh){
     if (refresh && d.dataset.t==='hand') return;
     const hd=g.hand||[], sn=g.seen||[];
     h = head('🃏 MIS CARTAS') + `<div style="color:var(--mut);font-size:13px;margin:-4px 0 10px">Toca una carta para taparla o destaparla</div><div class="cards">${hd.map((c,k)=>flipHTML(c,'',500+k*500)).join('')}</div>` +
-      (sn.length?`<div class="lbl" style="margin-top:14px">Cartas que me han enseñado</div><div class="cards">${sn.map((c,k)=>flipHTML(c,'',500+(hd.length+k)*500)).join('')}</div>`:'');
+      (sn.length?`<div class="lbl" style="margin-top:14px">Cartas que me han enseñado</div><div class="cards">${sn.map((c,k)=>`<div>${flipHTML(c,'',500+(hd.length+k)*500)}<div class="seenBy">de ${esc((g.seenBy||{})[c]||'?')}</div></div>`).join('')}</div>`:'');
   } else if (t==='notes'){
     h = head('📝 LIBRETA DE DETECTIVE') + notesHTML();
   } else if (t==='log'){
@@ -1298,7 +1307,10 @@ function openTab(t, refresh){
   } else if (t==='players'){
     h = head('👥 TRIPULACIÓN') + playersHTML();
   }
-  d.dataset.t=t; d.innerHTML=h; d.classList.add('open');
+  const sig = t+'|'+JSON.stringify([g.hand,g.seen,t==='log'?g.log.length:0,t==='players'?g.players.map(p=>p.n+''+p.alive):0,t==='players'?g.turn:0]);
+  if (refresh && d.dataset.sig===sig) return;
+  const sc = refresh ? d.scrollTop : 0;
+  d.dataset.t=t; d.dataset.sig=sig; d.innerHTML=h; d.classList.add('open'); if (refresh) d.scrollTop=sc;
   if (t==='hand'){ d.querySelectorAll('.flip').forEach(f=>f.style.animation='none'); armFlips(d);
     d.onclick=e=>{ const f=e.target.closest('.flip'); if(!f) return; f.dataset.manual=1; f.classList.toggle('on'); tone(f.classList.contains('on')?880:520,.1,'triangle',.06); }; }
   else d.onclick=null;
@@ -1393,8 +1405,8 @@ function handleEvents(g){
 function playNext(){
   if (evBusy || !evQ.length) return;
   const e = evQ.shift(); evBusy = true;
-  const d = showEv(e);
-  setTimeout(()=>{ hideOv(); evBusy=false; playNext(); if(!evQ.length && S.g) updateGame(S.g); }, d);
+  let d = 300; try{ d = showEv(e) || 300; }catch(err){ console.error(err); }
+  setTimeout(()=>{ hideOv(); evBusy=false; playNext(); if(!evQ.length && S.g){ try{ updateGame(S.g); }catch(err){ console.error(err); } } }, d);
 }
 function ov(html, color, extra=''){
   hideOv(true);
@@ -1442,7 +1454,13 @@ function showEv(e){
     case 'refutado': {
       const rf=pById(e.ref); const s=g.sug||{};
       if (me===e.by && s.shown){
-        SFX.reveal(); vib(120);
+        SFX.reveal(); vib(120); if (S.tab) openTab(null); if ($('#modal') && !$('#modal').dataset.ref) closeModal();
+        const card=s.shown, who=rf?rf.name:'';
+        setTimeout(()=>{ const m=modal(`<div style="text-align:center"><h2 class="t">📬 Carta recibida</h2>
+          <div class="ptxt" style="margin-bottom:10px"><b>${esc(who)}</b> te ha enseñado:</div>
+          <div style="display:flex;justify-content:center;margin-bottom:12px">${cardHTML(card,'lg')}</div>
+          <div class="ptxt" style="font-size:14px;color:var(--mut);margin-bottom:12px">Ya está tachada en tu 📝 libreta y guardada en 🃏 Cartas.</div>
+          <button class="btn green" onclick="closeModal()">✔ Entendido</button></div>`); m.dataset.lock=1; }, 4700);
         ov(`<h1>🛡️ ¡DESMENTIDO!</h1><p><b>${esc(rf?rf.name:'')}</b> te enseña en secreto:</p><div class="trio">${flipHTML(s.shown,'lg',900)}</div><p style="font-size:16px;opacity:.7">Apuntada en tu libreta ✔</p>`, rf?ALL[rf.sus].c:'');
         armFlips($('#ov')); return 4600;
       }
@@ -1822,7 +1840,7 @@ const Admin = (()=>{
 })();
 
 /* ═════════════ AUTO-ACTUALIZACIÓN ═════════════ */
-const APP_V = '23';
+const APP_V = '24';
 async function checkVersion(){
   try{
     const r = await fetch('version.json?t='+Date.now(), {cache:'no-store'}); if(!r.ok) return;
