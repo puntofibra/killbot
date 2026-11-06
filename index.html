@@ -371,6 +371,9 @@ textarea.inp{resize:vertical;font-family:inherit}
 @keyframes spark{0%{opacity:0;transform:translate(0,0) scale(1)}8%{opacity:1}40%{opacity:0;transform:translate(var(--dx),var(--dy)) scale(.3)}100%{opacity:0}}
 .broken .sm{position:absolute;width:40px;height:40px;border-radius:50%;background:radial-gradient(rgba(180,190,200,.55),transparent 70%);z-index:3;opacity:0;animation:smoke 3.4s infinite}
 @keyframes smoke{0%{opacity:0;transform:translateY(0) scale(.4)}20%{opacity:.8}100%{opacity:0;transform:translateY(-110px) scale(2.4)}}
+/* elegir sala: las alcanzables brillan, el resto se apaga */
+.board.choosing [data-room]:not(.reach){filter:grayscale(.85) brightness(.45);transition:filter .3s}
+.board.choosing [data-room].reach{animation:reach 1s ease-in-out infinite!important}
 /* imágenes de las animaciones: que nunca se salgan de la pantalla */
 .ov .big{max-width:100%;display:flex;justify-content:center}
 .ov .big .broken{max-width:100%}
@@ -940,13 +943,14 @@ function updateBoard(){
     arr.forEach((id,k)=>{ const t=$('#wt_'+id); if(!t) return; t.style.left=(c.x+7.5)+'%'; t.style.top=(c.y-6+k*5)+'%'; }); });
   const mine = cur && cur.id===g.me && g.phase==='mover';
   const here = cur ? g.pos[cur.sus] : null;
+  el.classList.toggle('choosing', !!mine);
   el.querySelectorAll('[data-room]').forEach(r=>{
     r.classList.toggle('reach', !!(mine && g.reach.includes(r.dataset.room)));
     r.classList.toggle('here', r.dataset.room===here);
   });
 }
 
-function flashRoom(id){ const r=document.querySelector(`#board [data-room="${id}"]`); if(!r) return; r.classList.remove('flash'); void r.offsetWidth; r.classList.add('flash'); }
+function flashRoom(id){ const r=document.querySelector(`#board [data-room="${id}"]`); if(!r) return; r.classList.remove('flash'); void r.offsetWidth; r.classList.add('flash'); clearTimeout(r._ft); r._ft=setTimeout(()=>r.classList.remove('flash'),2500); }
 
 function phaseText(g, p){
   const cur=g.players[g.turn]; const n=esc(cur.name);
@@ -1477,7 +1481,7 @@ const Admin = (()=>{
 })();
 
 /* ═════════════ AUTO-ACTUALIZACIÓN ═════════════ */
-const APP_V = '12';
+const APP_V = '13';
 async function checkVersion(){
   try{
     const r = await fetch('version.json?t='+Date.now(), {cache:'no-store'}); if(!r.ok) return;
