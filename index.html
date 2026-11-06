@@ -574,6 +574,7 @@ function showMenu(){
     ${USER?`<div class="userChip"><span>👤 ${esc(USER.user.nombre)}</span><button id="bOut">Cerrar sesión</button></div>`:''}
     ${s ? `<button class="btn gold" id="bCont">▶ Volver a la partida ${esc(s.code)}</button>` : ''}
     <button class="btn big green" id="bMov">📱 Crear partida solo móviles</button>
+    ${PUB.bots!==false?`<button class="btn gold" id="bSolo">🤖 Jugar solo contra bots</button>`:''}
     <button class="btn" id="bTv">📺 Crear partida en TV / PC</button>
     <button class="btn" id="bJoin">🔑 Unirme a una partida</button>
     ${!USER?`<button class="btn ghost sm" id="bLog" style="align-self:center">👤 Iniciar sesión</button>`:''}
@@ -587,6 +588,7 @@ function showMenu(){
   if ($('#bOut')) $('#bOut').onclick = ()=>{ logout(); showMenu(); };
   if ($('#bLog')) $('#bLog').onclick = ()=>showLogin();
   $('#bTv').onclick = ()=>{ SFX.click(); create('tv',''); };
+  if ($('#bSolo')) $('#bSolo').onclick = ()=>{ SFX.click(); soloPick(); };
   $('#bJoin').onclick = ()=>{ SFX.click(); showJoin(''); };
   $('#bHow').onclick = ()=>{ SFX.click(); howTo(); };
   $('#bShare').onclick = ()=>share(BASE, '🤖💀 Juega conmigo a KILLBOT, el cluedo espacial:');
@@ -643,6 +645,25 @@ async function create(modo, name){
   loading('Preparando la nave…');
   try{ const r = await call('crear', {ses:USER&&USER.ses, modo}); Object.assign(S,{code:r.code,token:r.token,pid:r.pid||null,modo:r.modo}); saveSess(); SFX.whoosh(); enterRoom(); }
   catch(e){ toast(errMsg(e),1); USER ? showMenu() : showLogin(()=>create(modo,name)); }
+}
+
+function soloPick(){
+  if (!USER) return showLogin(soloPick);
+  modal(`<h2 class="t">🤖 Jugar solo</h2><div class="ptxt" style="margin-bottom:12px">¿Contra cuántos robots quieres jugar?<br><small style="color:var(--mut)">Los bots investigan, sospechan y acusan como un jugador más.</small></div>
+    <div class="pick" style="grid-template-columns:repeat(4,1fr)">${[1,2,3,4,5,6,7,8].map(n=>`<button class="btn ${n===3?'green':''}" data-n="${n}" style="padding:16px 0;font-size:22px">${n}</button>`).join('')}</div>
+    <button class="btn ghost" onclick="closeModal()">Cancelar</button>`);
+  fx.querySelectorAll('#modal [data-n]').forEach(b=>b.onclick=()=>{ closeModal(); createSolo(+b.dataset.n); });
+}
+async function createSolo(n){
+  if (PUB.mant) return toast('🚧 '+(PUB.mantMsg||'Juego en mantenimiento'),1);
+  loading('Preparando la nave…');
+  try{
+    const r = await call('crear', {ses:USER.ses, modo:'movil'});
+    Object.assign(S,{code:r.code,token:r.token,pid:r.pid,modo:r.modo}); saveSess();
+    for (let i=0;i<n;i++){ loading(`Despertando robot ${i+1} de ${n}…`); await G('bot'); }
+    loading('¡Despegando!');
+    await G('empezar'); SFX.whoosh(); enterRoom();
+  }catch(e){ toast(errMsg(e),1); if (S.code) enterRoom(); else showMenu(); }
 }
 
 function howTo(){
