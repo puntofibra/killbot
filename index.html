@@ -1,0 +1,1366 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<title>KILLBOT · Cluedo espacial</title>
+<meta name="description" content="KILLBOT: el cluedo espacial de FuturMovil. Descubre qué robot desconectó a Lucas.">
+<meta name="theme-color" content="#04050d">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="KILLBOT">
+<meta property="og:title" content="KILLBOT · Cluedo espacial">
+<meta property="og:description" content="¿Qué robot desconectó a Lucas? Juega con tus amigos en la TV o solo con móviles.">
+<meta property="og:image" content="https://puntofibra.github.io/killbot/icon512.png">
+<link rel="manifest" href="manifest.json">
+<link rel="icon" type="image/png" href="icon192.png">
+<link rel="apple-touch-icon" href="icon192.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;700;900&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#04050d; --panel:rgba(14,20,40,.72); --line:rgba(120,200,255,.18);
+  --neon:#22e4ff; --pink:#ff3bd4; --lucas:#17ff5f; --red:#ff3b5c; --gold:#ffd23f;
+  --txt:#e9f4ff; --mut:#8aa0bf;
+}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;height:100%;background:var(--bg);color:var(--txt);font-family:Rajdhani,system-ui,sans-serif;overflow:hidden;overscroll-behavior:none;user-select:none;-webkit-user-select:none}
+body{background:radial-gradient(1200px 700px at 15% 10%,rgba(80,40,160,.35),transparent 60%),radial-gradient(900px 600px at 90% 90%,rgba(0,140,200,.25),transparent 60%),var(--bg)}
+#stars{position:fixed;inset:0;width:100%;height:100%;z-index:0;pointer-events:none}
+#app{position:fixed;inset:0;z-index:1;overflow:auto}
+button{font-family:inherit;cursor:pointer;border:0;color:inherit}
+input{font-family:inherit}
+img{-webkit-user-drag:none}
+.emo{display:inline-flex;align-items:center;justify-content:center;line-height:1}
+.hidden{display:none!important}
+
+/* ── botones ── */
+.btn{position:relative;display:flex;align-items:center;justify-content:center;gap:10px;width:100%;padding:15px 18px;border-radius:16px;
+  font-family:Orbitron;font-weight:700;font-size:15px;letter-spacing:1px;text-transform:uppercase;color:#fff;
+  background:linear-gradient(135deg,rgba(34,228,255,.22),rgba(255,59,212,.18));border:1px solid rgba(34,228,255,.55);
+  box-shadow:0 0 18px rgba(34,228,255,.25),inset 0 0 18px rgba(34,228,255,.12);overflow:hidden;transition:transform .12s,box-shadow .2s}
+.btn:before{content:"";position:absolute;inset:0;background:linear-gradient(110deg,transparent 30%,rgba(255,255,255,.25) 50%,transparent 70%);transform:translateX(-120%);animation:shine 3.5s infinite}
+.btn:active{transform:scale(.97)}
+.btn[disabled]{opacity:.45;pointer-events:none}
+.btn.big{padding:20px;font-size:18px}
+.btn.green{background:linear-gradient(135deg,rgba(23,255,95,.35),rgba(0,160,90,.25));border-color:var(--lucas);box-shadow:0 0 22px rgba(23,255,95,.35)}
+.btn.red{background:linear-gradient(135deg,rgba(255,59,92,.4),rgba(160,0,60,.3));border-color:var(--red);box-shadow:0 0 22px rgba(255,59,92,.35)}
+.btn.gold{background:linear-gradient(135deg,rgba(255,210,63,.4),rgba(200,120,0,.25));border-color:var(--gold);box-shadow:0 0 22px rgba(255,210,63,.3)}
+.btn.ghost{background:rgba(255,255,255,.04);border-color:rgba(255,255,255,.18);box-shadow:none}
+.btn.sm{padding:10px 12px;font-size:12px;border-radius:12px;width:auto}
+@keyframes shine{0%,60%{transform:translateX(-120%)}100%{transform:translateX(120%)}}
+.row{display:flex;gap:10px}
+.row>*{flex:1}
+.glass{background:var(--panel);border:1px solid var(--line);border-radius:22px;backdrop-filter:blur(12px);-webkit-backdrop-filter:blur(12px);box-shadow:0 10px 40px rgba(0,0,0,.45)}
+.inp{width:100%;padding:15px 16px;border-radius:14px;border:1px solid rgba(34,228,255,.4);background:rgba(0,10,30,.6);color:#fff;font-size:20px;font-weight:700;outline:none;text-align:center;letter-spacing:1px}
+.inp:focus{box-shadow:0 0 0 3px rgba(34,228,255,.25)}
+.inp.code{font-family:Orbitron;font-size:34px;letter-spacing:12px;text-transform:uppercase}
+.lbl{font-family:Orbitron;font-size:11px;letter-spacing:3px;color:var(--mut);text-transform:uppercase;margin:4px 0 8px}
+h2.t{font-family:Orbitron;font-weight:900;letter-spacing:2px;margin:0 0 14px;font-size:22px;text-transform:uppercase;
+  background:linear-gradient(90deg,#fff,var(--neon));-webkit-background-clip:text;background-clip:text;color:transparent}
+
+/* ── menú ── */
+.screen{min-height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:max(18px,env(safe-area-inset-top)) 16px max(18px,env(safe-area-inset-bottom))}
+.menu{width:100%;max-width:440px;display:flex;flex-direction:column;gap:12px;align-items:stretch}
+.logo{position:relative;text-align:center;margin-bottom:4px}
+.logo img.lg{width:100%;max-width:400px}
+.logoTxt{font-family:Orbitron;font-weight:900;font-size:clamp(46px,14vw,78px);letter-spacing:4px;line-height:1;color:#fff;
+  text-shadow:0 0 8px var(--neon),0 0 26px var(--neon),0 0 60px rgba(255,59,212,.6);position:relative;display:inline-block;animation:flick 6s infinite}
+.logoTxt:before,.logoTxt:after{content:attr(data-t);position:absolute;inset:0}
+.logoTxt:before{color:var(--pink);clip-path:polygon(0 0,100% 0,100% 40%,0 40%);transform:translate(-3px);animation:glitch 2.8s infinite steps(2)}
+.logoTxt:after{color:var(--neon);clip-path:polygon(0 60%,100% 60%,100% 100%,0 100%);transform:translate(3px);animation:glitch 3.3s infinite steps(2) reverse}
+@keyframes glitch{0%,88%{transform:none;opacity:0}90%{transform:translate(-5px,1px);opacity:.9}94%{transform:translate(4px,-1px);opacity:.9}100%{opacity:0}}
+@keyframes flick{0%,96%,100%{opacity:1}97%{opacity:.4}98%{opacity:1}99%{opacity:.6}}
+.sub{font-family:Orbitron;letter-spacing:5px;font-size:11px;color:var(--lucas);text-shadow:0 0 10px var(--lucas);margin-top:6px}
+.hero{position:relative;height:190px;display:flex;justify-content:center;align-items:flex-end;margin:4px 0 6px}
+.hero img{height:180px;filter:drop-shadow(0 0 18px rgba(23,255,95,.35));animation:float 4s ease-in-out infinite}
+.hero .emo{font-size:120px}
+.hero:after{content:"";position:absolute;bottom:-4px;width:180px;height:18px;border-radius:50%;background:radial-gradient(rgba(23,255,95,.45),transparent 70%);filter:blur(4px)}
+@keyframes float{0%,100%{transform:translateY(0) rotate(-2deg)}50%{transform:translateY(-12px) rotate(2deg)}}
+.foot{text-align:center;color:var(--mut);font-size:12px;margin-top:6px;letter-spacing:1px}
+
+/* ── selector de personajes ── */
+.chars{display:grid;grid-template-columns:repeat(3,1fr);gap:9px}
+.ch{position:relative;border-radius:16px;padding:6px 4px 8px;background:linear-gradient(180deg,rgba(255,255,255,.06),rgba(0,0,0,.25));border:2px solid rgba(255,255,255,.08);text-align:center;transition:.2s;overflow:hidden}
+.ch img,.ch .emo{width:100%;aspect-ratio:1;object-fit:contain;filter:drop-shadow(0 4px 8px rgba(0,0,0,.6))}
+.ch .nm{font-family:Orbitron;font-size:9.5px;font-weight:700;letter-spacing:.5px;color:var(--c);text-shadow:0 0 8px var(--c);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ch .ow{font-size:11px;color:#fff;opacity:.8;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;min-height:14px}
+.ch:before{content:"";position:absolute;inset:0;background:radial-gradient(circle at 50% 35%,var(--c),transparent 65%);opacity:.18}
+.ch.mine{border-color:var(--c);box-shadow:0 0 18px var(--c),inset 0 0 18px var(--c);transform:translateY(-2px)}
+.ch.taken{opacity:.42;filter:grayscale(.7)}
+.ch .dot{position:absolute;top:6px;right:6px;width:12px;height:12px;border-radius:50%;background:var(--c);box-shadow:0 0 10px var(--c)}
+
+/* ── lobby ── */
+.lobby{width:100%;max-width:520px;display:flex;flex-direction:column;gap:14px}
+.codeBox{display:flex;gap:14px;align-items:center;padding:14px}
+.qr{background:#fff;padding:8px;border-radius:14px;flex:none;box-shadow:0 0 24px rgba(34,228,255,.35)}
+.qr img,.qr canvas{display:block}
+.bigCode{font-family:Orbitron;font-weight:900;font-size:42px;letter-spacing:8px;color:#fff;text-shadow:0 0 14px var(--neon)}
+.plist{display:flex;flex-direction:column;gap:7px}
+.pl{display:flex;align-items:center;gap:10px;padding:7px 10px;border-radius:14px;background:rgba(255,255,255,.04);border-left:4px solid var(--c)}
+.pl img,.pl .emo{width:38px;height:38px;object-fit:contain;font-size:26px}
+.pl .n{flex:1;font-weight:700;font-size:17px}
+.pl .tag{font-size:11px;font-family:Orbitron;color:var(--mut);letter-spacing:1px}
+.x{background:rgba(255,59,92,.18);border:1px solid rgba(255,59,92,.5);border-radius:10px;width:32px;height:32px;font-weight:900}
+
+/* TV lobby */
+.tvLobby{width:100%;height:100%;display:grid;grid-template-columns:minmax(320px,38%) 1fr;gap:3vw;padding:4vh 4vw;align-items:center}
+.tvLobby .left{display:flex;flex-direction:column;align-items:center;gap:2.2vh;text-align:center}
+.tvLobby .qr{padding:1.2vh;border-radius:2vh}
+.tvLobby .bigCode{font-size:9vh;letter-spacing:2vh}
+.tvLobby .hint{font-size:2.4vh;color:var(--mut)}
+.slots{display:grid;grid-template-columns:repeat(3,1fr);gap:1.6vh}
+.slot{border-radius:2.2vh;padding:1.2vh;text-align:center;min-height:22vh;background:linear-gradient(180deg,rgba(255,255,255,.06),rgba(0,0,0,.25));border:2px solid rgba(255,255,255,.08);position:relative;overflow:hidden}
+.slot img,.slot .emo{height:15vh;max-width:100%;object-fit:contain;font-size:10vh}
+.slot .nm{font-family:Orbitron;font-weight:700;font-size:1.8vh;color:var(--c);text-shadow:0 0 10px var(--c)}
+.slot .ow{font-size:2.4vh;font-weight:700}
+.slot.on{border-color:var(--c);box-shadow:0 0 2vh var(--c);animation:pop .5s}
+.slot.off{opacity:.25;filter:grayscale(1)}
+@keyframes pop{0%{transform:scale(.6);opacity:0}70%{transform:scale(1.06)}100%{transform:none;opacity:1}}
+
+/* ── juego ── */
+.game{position:fixed;inset:0;display:grid;grid-template-rows:auto auto 1fr auto;grid-template-columns:100%;
+  padding:max(8px,env(safe-area-inset-top)) 8px max(6px,env(safe-area-inset-bottom))}
+.gbar{display:flex;align-items:center;gap:8px;padding:4px 4px 8px}
+.gbar .cd{font-family:Orbitron;font-size:11px;letter-spacing:2px;color:var(--mut);padding:6px 9px;border:1px solid var(--line);border-radius:10px}
+.turnB{flex:1;display:flex;align-items:center;gap:8px;padding:6px 10px;border-radius:12px;background:linear-gradient(90deg,color-mix(in srgb,var(--c) 30%,transparent),transparent);border:1px solid color-mix(in srgb,var(--c) 60%,transparent);min-width:0}
+.turnB img,.turnB .emo{width:30px;height:30px;object-fit:contain;font-size:22px}
+.turnB b{font-family:Orbitron;font-size:12.5px;letter-spacing:1px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:#fff}
+.turnB small{display:block;font-size:12px;color:var(--mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ib{width:38px;height:38px;border-radius:11px;background:rgba(255,255,255,.06);border:1px solid var(--line);font-size:17px;flex:none}
+.boardWrap{display:flex;justify-content:center}
+
+.board{position:relative;width:min(96vw,50vh);aspect-ratio:1;border-radius:50%;
+  background:radial-gradient(circle,rgba(20,40,80,.55) 0,rgba(10,15,35,.75) 55%,rgba(0,0,0,0) 72%)}
+.board:before{content:"";position:absolute;inset:3%;border-radius:50%;border:1px dashed rgba(34,228,255,.18);animation:spin 80s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.board svg.lines{position:absolute;inset:0;width:100%;height:100%;overflow:visible}
+.lines .ringL{fill:none;stroke:rgba(34,228,255,.35);stroke-width:1.3;stroke-dasharray:2 1.5;animation:dash 6s linear infinite}
+.lines .tele{fill:none;stroke-width:.7;stroke-dasharray:1.2 1.2;animation:dash 2s linear infinite;opacity:.65}
+.lines .spoke{stroke:rgba(255,255,255,.07);stroke-width:.5}
+@keyframes dash{to{stroke-dashoffset:-20}}
+.room,.core{position:absolute;transform:translate(-50%,-50%);border-radius:22%;display:flex;align-items:center;justify-content:center;
+  background:radial-gradient(circle at 50% 40%,color-mix(in srgb,var(--rc) 35%,#0b1328),#070b18 75%);
+  border:1.5px solid color-mix(in srgb,var(--rc) 70%,transparent);box-shadow:0 0 12px color-mix(in srgb,var(--rc) 40%,transparent),inset 0 0 12px rgba(0,0,0,.6);transition:box-shadow .3s,transform .3s}
+.room{width:21%;height:21%}
+.room img,.core img{width:118%;height:118%;object-fit:contain;pointer-events:none;filter:drop-shadow(0 3px 5px rgba(0,0,0,.7))}
+.room .emo,.core .emo{font-size:min(7vw,3.6vh);opacity:.9}
+.rname{position:absolute;bottom:-14%;left:50%;transform:translateX(-50%);white-space:nowrap;font-family:Orbitron;font-weight:700;font-size:min(2.1vw,1.05vh);letter-spacing:.5px;
+  padding:2px 5px;border-radius:6px;background:rgba(0,0,0,.75);color:color-mix(in srgb,var(--rc) 60%,#fff);border:1px solid color-mix(in srgb,var(--rc) 50%,transparent);pointer-events:none}
+.core{left:50%;top:50%;width:25%;height:25%;border-radius:50%;--rc:#ff3b5c;animation:corePulse 3s ease-in-out infinite}
+@keyframes corePulse{50%{box-shadow:0 0 30px rgba(255,59,92,.6),inset 0 0 20px rgba(255,59,92,.3)}}
+.room.reach,.core.reach{cursor:pointer;animation:reach 1s ease-in-out infinite;z-index:3}
+@keyframes reach{0%,100%{box-shadow:0 0 10px #fff,0 0 22px var(--lucas);transform:translate(-50%,-50%) scale(1)}50%{box-shadow:0 0 20px #fff,0 0 40px var(--lucas);transform:translate(-50%,-50%) scale(1.07)}}
+.room.here{border-color:#fff}
+.room.flash{animation:flash 1.2s 2}
+@keyframes flash{50%{box-shadow:0 0 40px #fff,0 0 70px var(--rc)}}
+.tok{position:absolute;width:8.5%;aspect-ratio:1;transform:translate(-50%,-50%);transition:left .9s cubic-bezier(.5,-.3,.3,1.3),top .9s cubic-bezier(.5,-.3,.3,1.3);z-index:5;pointer-events:none}
+.tok .disc{position:absolute;inset:8%;border-radius:50%;background:radial-gradient(circle at 35% 30%,#fff,var(--c) 40%,#000 120%);border:2px solid #fff;box-shadow:0 0 10px var(--c),0 3px 6px rgba(0,0,0,.8)}
+.tok img,.tok .emo{position:absolute;left:-12%;top:-30%;width:124%;height:124%;object-fit:contain;filter:drop-shadow(0 2px 3px rgba(0,0,0,.9))}
+.tok.npc{opacity:.55;width:7%}
+.tok.cur{z-index:6}
+.tok.cur .disc{animation:curT 1s infinite}
+@keyframes curT{50%{box-shadow:0 0 22px var(--c),0 0 40px var(--c)}}
+.tok.dead{filter:grayscale(1);opacity:.5}
+.wtok{position:absolute;width:5.2%;aspect-ratio:1;transform:translate(-50%,-50%);transition:left .9s,top .9s;z-index:4;pointer-events:none;
+  display:flex;align-items:center;justify-content:center;border-radius:30%;background:rgba(0,0,0,.6);border:1px solid rgba(255,180,60,.6)}
+.wtok img{width:130%;height:130%;object-fit:contain}
+.wtok .emo{font-size:min(3vw,1.5vh)}
+
+.panel{padding:8px 2px;display:flex;flex-direction:column;gap:9px;justify-content:center;min-height:0;overflow:auto}
+.ptxt{text-align:center;font-size:17px;line-height:1.3;color:#cfe3ff}
+.ptxt b{color:#fff}
+.diceMini{display:inline-flex;width:30px;height:30px;border-radius:8px;background:#fff;color:#000;font-family:Orbitron;font-weight:900;align-items:center;justify-content:center;margin:0 4px;box-shadow:0 0 10px var(--neon)}
+.tabs{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.tabs button{padding:10px 4px;border-radius:12px;background:rgba(255,255,255,.05);border:1px solid var(--line);font-weight:700;font-size:13px}
+.tabs button.on{background:rgba(34,228,255,.18);border-color:var(--neon)}
+.drawer{position:fixed;left:0;right:0;bottom:0;max-height:78vh;z-index:40;padding:14px 12px max(14px,env(safe-area-inset-bottom));
+  border-radius:24px 24px 0 0;background:rgba(8,12,28,.96);border-top:1px solid var(--neon);box-shadow:0 -10px 40px rgba(0,0,0,.6);
+  transform:translateY(105%);transition:transform .35s cubic-bezier(.2,.9,.3,1);overflow:auto}
+.drawer.open{transform:none}
+.drawer .hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+.drawer .hd b{font-family:Orbitron;letter-spacing:2px}
+
+/* cartas */
+.cards{display:grid;grid-template-columns:repeat(auto-fill,minmax(96px,1fr));gap:10px}
+.kcard{position:relative;aspect-ratio:2/3;border-radius:12px;padding:4px;background:linear-gradient(145deg,var(--c),#111 60%,var(--c));box-shadow:0 0 14px color-mix(in srgb,var(--c) 55%,transparent),0 6px 14px rgba(0,0,0,.6);overflow:hidden;animation:dealIn .5s both}
+.kcard .in{position:relative;height:100%;border-radius:9px;background:radial-gradient(circle at 50% 30%,color-mix(in srgb,var(--c) 40%,#0b1020),#05070f 80%);display:flex;flex-direction:column;align-items:center;overflow:hidden}
+.kcard .tp{font-family:Orbitron;font-size:7.5px;letter-spacing:2px;color:var(--c);margin-top:5px;text-transform:uppercase}
+.kcard .art{flex:1;display:flex;align-items:center;justify-content:center;width:100%;min-height:0}
+.kcard .art img{width:96%;height:96%;object-fit:contain;filter:drop-shadow(0 4px 6px rgba(0,0,0,.8))}
+.kcard .art .emo{font-size:40px}
+.kcard .nm{width:100%;text-align:center;font-family:Orbitron;font-weight:700;font-size:9px;padding:5px 3px 6px;background:rgba(0,0,0,.6);border-top:1px solid color-mix(in srgb,var(--c) 60%,transparent);line-height:1.15}
+.kcard .holo{position:absolute;inset:0;background:linear-gradient(115deg,transparent 30%,rgba(255,255,255,.35) 45%,rgba(120,255,255,.15) 50%,transparent 62%);background-size:250% 100%;animation:holo 3.8s linear infinite;mix-blend-mode:screen;pointer-events:none}
+.kcard.sel{outline:3px solid #fff;box-shadow:0 0 26px #fff,0 0 40px var(--c);transform:translateY(-4px)}
+.kcard.dim{opacity:.35;filter:grayscale(.8)}
+.kcard.lg{width:min(42vw,220px)}
+.kcard.lg .nm{font-size:13px}.kcard.lg .tp{font-size:10px}.kcard.lg .art .emo{font-size:80px}
+@keyframes holo{0%{background-position:150% 0}100%{background-position:-100% 0}}
+@keyframes dealIn{from{transform:translateY(30px) rotate(-8deg) scale(.8);opacity:0}}
+.back{background:linear-gradient(145deg,#2c3a55,#0b0f1d)}
+.back .in{background:repeating-linear-gradient(45deg,#0a1830 0 8px,#0d1f3d 8px 16px);justify-content:center}
+.back .in:after{content:"KB";font-family:Orbitron;font-weight:900;font-size:30px;color:var(--lucas);text-shadow:0 0 12px var(--lucas)}
+
+/* libreta */
+.nsec{margin-bottom:12px}
+.nrow{display:flex;align-items:center;gap:10px;padding:6px 8px;border-radius:10px;background:rgba(255,255,255,.03);margin-bottom:4px}
+.nrow img,.nrow .emo{width:30px;height:30px;object-fit:contain;font-size:20px}
+.nrow .n{flex:1;font-weight:700}
+.nrow .bd{font-family:Orbitron;font-size:9px;letter-spacing:1px;padding:3px 6px;border-radius:6px}
+.bd.mia{background:rgba(23,255,95,.2);color:var(--lucas)}
+.bd.vis{background:rgba(34,228,255,.2);color:var(--neon)}
+.mk{width:40px;height:32px;border-radius:9px;background:rgba(255,255,255,.07);border:1px solid var(--line);font-size:17px;font-weight:900}
+.nrow.cross .n{text-decoration:line-through;opacity:.45}
+
+/* log */
+.logL{display:flex;flex-direction:column;gap:6px}
+.logL div{padding:8px 10px;border-radius:10px;background:rgba(255,255,255,.04);font-size:15px;line-height:1.3;border-left:3px solid var(--neon)}
+
+/* ── overlays ── */
+#fx{position:fixed;inset:0;z-index:50;pointer-events:none}
+.ov{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;padding:20px;text-align:center;
+  background:radial-gradient(circle,rgba(10,20,50,.86),rgba(0,0,0,.94));pointer-events:auto;animation:ovIn .35s both}
+.ov.out{animation:ovOut .35s both}
+@keyframes ovIn{from{opacity:0;backdrop-filter:blur(0)}to{opacity:1}}
+@keyframes ovOut{to{opacity:0}}
+.ov h1{font-family:Orbitron;font-weight:900;margin:0;font-size:clamp(28px,8vw,64px);letter-spacing:3px;color:#fff;text-shadow:0 0 14px var(--oc,var(--neon)),0 0 40px var(--oc,var(--neon));animation:zoomIn .6s cubic-bezier(.2,1.5,.4,1) both}
+.ov p{margin:0;font-size:clamp(17px,4.6vw,30px);max-width:820px;line-height:1.3}
+.ov p b{color:var(--oc,var(--neon))}
+@keyframes zoomIn{from{transform:scale(2.4);opacity:0;filter:blur(8px)}}
+.ov .trio{display:flex;gap:12px;justify-content:center;flex-wrap:wrap}
+.ov .trio .kcard{width:min(28vw,200px)}
+.ov .trio .kcard:nth-child(2){animation-delay:.25s}.ov .trio .kcard:nth-child(3){animation-delay:.5s}
+.endBot img{height:170px;filter:drop-shadow(0 0 20px var(--g))}
+.ch .bot,.slot .bot{width:100%}
+.ch .bot img{width:100%;aspect-ratio:1;object-fit:contain}
+.slot .bot img{height:15vh}
+.hero .broken img{height:180px}
+.ov .big img{height:min(40vh,320px);filter:drop-shadow(0 0 30px var(--oc,var(--neon)));animation:float 3s ease-in-out infinite}
+.ov .big .emo{font-size:150px}
+.scan{position:absolute;inset:0;background:repeating-linear-gradient(0deg,rgba(255,255,255,.035) 0 2px,transparent 2px 4px);pointer-events:none}
+.alarm{position:absolute;inset:0;pointer-events:none;box-shadow:inset 0 0 120px rgba(255,0,40,.7);animation:alarm .8s infinite}
+@keyframes alarm{50%{box-shadow:inset 0 0 40px rgba(255,0,40,.2)}}
+
+.dice3d{width:120px;height:120px;perspective:600px}
+.cube{width:100%;height:100%;position:relative;transform-style:preserve-3d;animation:roll 1.4s cubic-bezier(.2,.8,.3,1) both}
+.cube div{position:absolute;inset:0;border-radius:18px;background:linear-gradient(145deg,#fff,#cfe9ff);border:2px solid var(--neon);display:flex;align-items:center;justify-content:center;
+  font-family:Orbitron;font-weight:900;font-size:60px;color:#05101f;box-shadow:inset 0 0 20px rgba(34,228,255,.5)}
+.cube .f1{transform:translateZ(60px)}.cube .f2{transform:rotateY(90deg) translateZ(60px)}.cube .f3{transform:rotateY(180deg) translateZ(60px)}
+.cube .f4{transform:rotateY(-90deg) translateZ(60px)}.cube .f5{transform:rotateX(90deg) translateZ(60px)}.cube .f6{transform:rotateX(-90deg) translateZ(60px)}
+@keyframes roll{from{transform:rotateX(720deg) rotateY(900deg) translateY(-200px)}to{transform:rotateX(0) rotateY(0)}}
+
+.modal{position:absolute;inset:0;display:flex;align-items:flex-end;justify-content:center;background:rgba(0,0,0,.7);pointer-events:auto;animation:ovIn .25s both}
+.modal .box{width:100%;max-width:640px;max-height:92vh;overflow:auto;padding:18px 14px max(16px,env(safe-area-inset-bottom));border-radius:26px 26px 0 0;
+  background:linear-gradient(180deg,#0d1530,#060a18);border-top:2px solid var(--neon);box-shadow:0 -10px 50px rgba(34,228,255,.25);animation:up .35s cubic-bezier(.2,.9,.3,1) both}
+@keyframes up{from{transform:translateY(100%)}}
+.pick{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:12px}
+.pick .kcard{animation:none}
+.howto{font-size:16px;line-height:1.45;color:#d4e6ff}
+.howto h3{font-family:Orbitron;font-size:14px;color:var(--neon);letter-spacing:1px;margin:14px 0 4px}
+
+#toast{position:fixed;left:50%;top:max(14px,env(safe-area-inset-top));transform:translate(-50%,-140%);z-index:90;padding:12px 18px;border-radius:14px;background:rgba(10,15,35,.95);
+  border:1px solid var(--neon);font-weight:700;font-size:16px;transition:transform .35s cubic-bezier(.2,1.4,.4,1);max-width:92vw;text-align:center;box-shadow:0 0 20px rgba(34,228,255,.35)}
+#toast.on{transform:translate(-50%,0)}
+#toast.err{border-color:var(--red);box-shadow:0 0 20px rgba(255,59,92,.4)}
+
+.spinner{width:44px;height:44px;border-radius:50%;border:4px solid rgba(34,228,255,.2);border-top-color:var(--neon);animation:spin 1s linear infinite}
+
+/* ── TV (tablero) ── */
+.game.tv{grid-template-rows:100%;grid-template-columns:auto 1fr;gap:2vw;padding:2vh 2vw}
+.game.tv .board{width:94vh;max-width:62vw}
+.tvSide{display:flex;flex-direction:column;gap:1.6vh;min-height:0}
+.tvSide .logoTxt{font-size:6vh}
+.tvSide .turnB{padding:1.2vh 1.4vw}
+.tvSide .turnB img,.tvSide .turnB .emo{width:7vh;height:7vh;font-size:5vh}
+.tvSide .turnB b{font-size:2.6vh}.tvSide .turnB small{font-size:2.1vh}
+.tvSide .pl{padding:.7vh 1vw}.tvSide .pl img,.tvSide .pl .emo{width:5vh;height:5vh}
+.tvSide .pl .n{font-size:2.3vh}
+.narr{display:flex;gap:1vw;align-items:flex-end}
+.narr img,.narr .emo{height:14vh;font-size:9vh;animation:float 4s ease-in-out infinite}
+.bubble{flex:1;padding:1.4vh 1.2vw;border-radius:2vh 2vh 2vh .4vh;background:rgba(23,255,95,.1);border:1px solid rgba(23,255,95,.5);font-size:2.3vh;line-height:1.3}
+.tvLog{flex:1;overflow:hidden;display:flex;flex-direction:column;gap:.6vh;font-size:2vh;color:#bcd2f0;mask-image:linear-gradient(#000 60%,transparent)}
+.game.tv .ov h1{font-size:9vh}.game.tv .ov p{font-size:3.6vh}
+
+/* PC / horizontal */
+@media (min-aspect-ratio:5/4) and (min-width:700px){
+  .game.ph{grid-template-columns:auto 1fr;grid-template-rows:auto 1fr auto;column-gap:22px}
+  .game.ph .gbar{grid-column:1/3}
+  .game.ph .boardWrap{grid-row:2/4;align-items:center}
+  .game.ph .board{width:min(84vh,58vw)}
+  .game.ph .panel{grid-column:2}
+  .game.ph .tabs{grid-column:2}
+  .drawer{left:auto;right:0;width:min(480px,40vw);top:0;max-height:none;border-radius:24px 0 0 24px;border-top:0;border-left:1px solid var(--neon);transform:translateX(105%)}
+  .drawer.open{transform:none}
+  .rname{font-size:1.25vh}
+  .room .emo,.core .emo{font-size:4vh}
+}
+
+/* login */
+.segm{display:grid;grid-template-columns:1fr 1fr;gap:6px;padding:4px;border-radius:14px;background:rgba(0,0,0,.35);border:1px solid var(--line)}
+.segm button{padding:10px;border-radius:10px;background:none;font-family:Orbitron;font-size:12px;letter-spacing:1px;color:var(--mut)}
+.segm button.on{background:rgba(34,228,255,.2);color:#fff;box-shadow:0 0 12px rgba(34,228,255,.3)}
+.inp.l{font-size:17px;text-align:left;letter-spacing:0;padding:13px 14px;font-weight:600}
+.inp.s{font-size:14px;padding:9px 10px}
+textarea.inp{resize:vertical;font-family:inherit}
+.lnk{background:none;color:var(--neon);font-size:15px;text-decoration:underline;padding:4px}
+.sep{display:flex;align-items:center;gap:10px;color:var(--mut);font-size:13px;margin:4px 0}
+.sep:before,.sep:after{content:"";flex:1;height:1px;background:var(--line)}
+.gBtn{display:flex;justify-content:center;min-height:44px}
+.holdable{--hold:0%}
+.holdable:after{content:"";position:absolute;left:0;bottom:0;height:4px;width:var(--hold);background:#fff;box-shadow:0 0 10px #fff}
+.userChip{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:8px 12px;border-radius:14px;background:rgba(23,255,95,.08);border:1px solid rgba(23,255,95,.35);font-weight:700}
+.userChip button{background:none;color:var(--mut);text-decoration:underline;font-size:14px}
+.banner{padding:10px 14px;border-radius:14px;background:rgba(255,210,63,.12);border:1px solid rgba(255,210,63,.5);text-align:center;font-weight:700}
+/* admin */
+.nfcAnim{position:relative;width:110px;height:110px;margin:0 auto;color:var(--neon);display:flex;align-items:center;justify-content:center}
+.nfcAnim svg{width:64px;height:64px;filter:drop-shadow(0 0 10px var(--neon))}
+.nfcAnim i{position:absolute;inset:0;border-radius:50%;border:2px solid var(--neon);animation:ping 2s infinite}
+.nfcAnim i+i{animation-delay:1s}
+@keyframes ping{from{transform:scale(.5);opacity:1}to{transform:scale(1.3);opacity:0}}
+.modal.adm .box{max-width:900px;max-height:96vh;height:96vh}
+.admHd{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+.admTabs{display:flex;gap:6px;overflow:auto;padding-bottom:6px;margin-bottom:8px}
+.admTabs button{flex:none;padding:9px 12px;border-radius:11px;background:rgba(255,255,255,.05);border:1px solid var(--line);font-weight:700;font-size:14px}
+.admTabs button.on{background:rgba(34,228,255,.2);border-color:var(--neon)}
+.admBody{display:flex;flex-direction:column;gap:8px}
+.kpis{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.kpis div{padding:12px;border-radius:14px;background:rgba(255,255,255,.05);text-align:center}
+.kpis b{display:block;font-family:Orbitron;font-size:26px;color:var(--neon)}
+.kpis span{font-size:12px;color:var(--mut)}
+.admRow{display:flex;align-items:center;gap:10px;justify-content:space-between;padding:9px 11px;border-radius:12px;background:rgba(255,255,255,.04);font-size:15px}
+.admRow small{color:var(--mut)}
+.bar{display:grid;grid-template-columns:140px 1fr 30px;align-items:center;gap:8px;font-size:14px}
+.bar i{height:10px;border-radius:5px;background:linear-gradient(90deg,var(--neon),var(--pink))}
+.mut{color:var(--mut);font-size:14px}
+.fld{display:flex;flex-direction:column;gap:6px;font-weight:700;font-size:14px;color:var(--mut)}
+.chk{display:flex;align-items:center;gap:10px;font-weight:700;font-size:16px}
+.chk input{width:22px;height:22px;accent-color:var(--lucas)}
+.admCard{display:grid;grid-template-columns:80px 1fr;gap:10px;align-items:center;padding:8px;border-radius:14px;background:rgba(255,255,255,.04)}
+.admCard .mini .kcard{width:80px;animation:none}
+.admCard .f{display:flex;flex-direction:column;gap:6px}
+/* efectos: propulsores animados */
+.bot{position:relative;display:inline-block;--fc:#17ff5f}
+.bot>img,.bot>.emo{position:relative;z-index:2}
+.fl{position:absolute;left:50%;bottom:6%;width:44%;height:24%;transform:translate(-50%,88%);z-index:1;pointer-events:none}
+.fl i{position:absolute;bottom:0;width:22%;height:100%;border-radius:50% 50% 45% 45%/30% 30% 70% 70%;transform-origin:50% 0;
+  background:radial-gradient(ellipse at 50% 22%,#fff 0 18%,var(--fc) 45%,transparent 72%);filter:blur(1px) drop-shadow(0 0 8px var(--fc));animation:flame .14s ease-in-out infinite alternate;mix-blend-mode:screen}
+.fl i:nth-child(1){left:8%}.fl i:nth-child(2){left:39%;height:118%;animation-delay:.05s}.fl i:nth-child(3){left:70%;animation-delay:.09s}
+@keyframes flame{from{transform:scaleY(.82) scaleX(1.05);opacity:.85}to{transform:scaleY(1.12) scaleX(.92);opacity:1}}
+.broken{position:relative;display:inline-block}
+.broken .sp{position:absolute;width:6px;height:6px;border-radius:50%;background:#fff;box-shadow:0 0 8px #ffd23f,0 0 14px #17ff5f;opacity:0;z-index:3;animation:spark 1.6s infinite}
+@keyframes spark{0%{opacity:0;transform:translate(0,0) scale(1)}8%{opacity:1}40%{opacity:0;transform:translate(var(--dx),var(--dy)) scale(.3)}100%{opacity:0}}
+.broken .sm{position:absolute;width:40px;height:40px;border-radius:50%;background:radial-gradient(rgba(180,190,200,.55),transparent 70%);z-index:3;opacity:0;animation:smoke 3.4s infinite}
+@keyframes smoke{0%{opacity:0;transform:translateY(0) scale(.4)}20%{opacity:.8}100%{opacity:0;transform:translateY(-110px) scale(2.4)}}
+</style>
+</head>
+<body>
+<canvas id="stars"></canvas>
+<div id="app"></div>
+<div id="fx"></div>
+<div id="toast"></div>
+<script src="js/qrcode.min.js"></script>
+<script>
+/* ═════════════ DATOS ═════════════ */
+const CFG = {
+  API: 'https://script.google.com/macros/s/AKfycby1XQw0Hzcxju9InSZyYf7lnocgtYuewCGj-H1DR5268roAoiFttif6WRE2okn1Pl7-Ow/exec',
+  GOOGLE: '454055120059-nuhaop4r62urc3u036cc3grpqo71ulg7.apps.googleusercontent.com',
+  URL: 'https://puntofibra.github.io/killbot/',
+  ADMIN: 'futurmovil.com@gmail.com'
+};
+const QS = new URLSearchParams(location.search);
+const SALA0 = (QS.get('sala')||'').toUpperCase().replace(/[^A-Z]/g,'').slice(0,4);
+const MODO0 = (QS.get('modo')||'').toLowerCase();
+const ADMQ = (QS.get('adm')||'').replace(/[^a-f0-9]/g,'');
+const BASE = CFG.URL;
+const IMG = 'img/';
+let IMGV = 1, PUB = {};
+const SUS = [
+  {id:'nova',   n:'Capitana Nova', c:'#ff3b5c', d:'Capitana de la nave. Mandona.'},
+  {id:'voltia', n:'Voltia',        c:'#ff4fd8', d:'Diva influencer. Siempre con selfies.'},
+  {id:'tuercas',n:'Dr. Tuercas',   c:'#ffe14d', d:'Científico anciano y despistado.'},
+  {id:'chispas',n:'Chispas',       c:'#ff8a1f', d:'Perro robot travieso.'},
+  {id:'megaton',n:'Megatón',       c:'#2f7bff', d:'Robot de carga enorme y bonachón.'},
+  {id:'byte',   n:'Byte',          c:'#a259ff', d:'Hacker con capucha. Sospechoso.'},
+  {id:'cromo',  n:'Chef Cromo',    c:'#22e4ff', d:'Cocinero de la nave.'},
+  {id:'octo',   n:'Octo',          c:'#d9813f', d:'Pulpo mecánico de 8 brazos.'},
+  {id:'botler', n:'Sir Botler',    c:'#c9a227', d:'Mayordomo muy estirado.'}
+];
+const WEA = [
+  {id:'destornillador',n:'Destornillador de plasma',e:'🪛'},
+  {id:'martillo',n:'Martillo neumático',e:'🔨'},
+  {id:'laser',n:'Pistola láser',e:'🔫'},
+  {id:'llave',n:'Llave magnética',e:'🔧'},
+  {id:'soldador',n:'Soplete de fusión',e:'🔥'},
+  {id:'iman',n:'Imán borra-memorias',e:'🧲'},
+  {id:'cable',n:'Cable de alta tensión',e:'🔌'},
+  {id:'aspiradora',n:'Aspiradora agujero negro',e:'🌀'},
+  {id:'pendrive',n:'Pendrive virus',e:'💾'}
+];
+const ROOMS = [
+  {id:'puente',n:'Puente de mando',e:'🛸',c:'#22e4ff'},
+  {id:'observatorio',n:'Observatorio',e:'🔭',c:'#8f7bff'},
+  {id:'laboratorio',n:'Laboratorio',e:'🧪',c:'#17ff5f'},
+  {id:'invernadero',n:'Invernadero',e:'🌿',c:'#7dff4a'},
+  {id:'cocina',n:'Cocina orbital',e:'🍳',c:'#ffb02e'},
+  {id:'criogenia',n:'Criogenia',e:'❄️',c:'#9fe8ff'},
+  {id:'hangar',n:'Hangar',e:'🚀',c:'#ff6a3d'},
+  {id:'taller',n:'Taller de reparación',e:'🛠️',c:'#ffd23f'},
+  {id:'reactor',n:'Reactor',e:'☢️',c:'#ff3b5c'}
+];
+const TELE = [[0,4],[2,6],[3,8]];
+const PASOS = [0,1,1,2,2,3,3];
+const ALL = {}, BASE_NM = {};
+SUS.forEach(x=>{ x.t='sus'; ALL[x.id]=x; });
+WEA.forEach(x=>{ x.t='wea'; x.c='#ff9d2e'; ALL[x.id]=x; });
+ROOMS.forEach(x=>{ x.t='room'; ALL[x.id]=x; });
+Object.values(ALL).forEach(x=>{ x.n0=x.n; x.c0=x.c; x.d0=x.d||''; BASE_NM[x.id]=x.n; });
+function aplicaCartas(c){ Object.values(ALL).forEach(x=>{ const o=(c||{})[x.id]||{}; x.n=o.n||x.n0; x.c=o.c||x.c0; x.d=o.d||x.d0; x.img=o.img||''; }); }
+ALL.nucleo={id:'nucleo',n:'Núcleo central',e:'🔴',c:'#ff3b5c',t:'room'};
+const NM = id => (ALL[id]||{}).n || id;
+
+/* ═════════════ IMÁGENES ═════════════ */
+function robotSVG(c, ghost){
+  const body = ghost ? '#dff6ff' : 'url(#m)';
+  const s = `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 124'><defs><linearGradient id='m' x1='0' x2='1'><stop offset='0' stop-color='#ffffff'/><stop offset='.55' stop-color='#cfd6de'/><stop offset='1' stop-color='#7d8792'/></linearGradient></defs>`+
+  (ghost?`<ellipse cx='50' cy='12' rx='16' ry='5' fill='none' stroke='#ffd23f' stroke-width='3'/>`:`<path d='M33 100 h10 l-2 8 h-6z M45 100 h10 l-2 9 h-6z M57 100 h10 l-2 8 h-6z' fill='#8d97a3' stroke='#111' stroke-width='2'/>`)+
+  `<rect x='20' y='56' width='60' height='46' rx='20' fill='${body}' stroke='#111' stroke-width='3'/><rect x='30' y='70' width='5' height='16' rx='2' fill='${c}'/><circle cx='50' cy='76' r='6' fill='${c}' stroke='#111' stroke-width='2'/>`+
+  `<path d='M20 58 A30 30 0 0 1 80 58 Z' fill='${body}' stroke='#111' stroke-width='3'/><rect x='45' y='29' width='10' height='5' rx='2' fill='${c}'/>`+
+  `<path d='M26 44 Q50 30 74 44 Q76 56 62 56 Q50 50 38 56 Q24 56 26 44Z' fill='#1b2129'/>`+
+  `<circle cx='40' cy='47' r='6.5' fill='#fff'/><circle cx='60' cy='47' r='6.5' fill='#fff'/><circle cx='41' cy='48' r='3.4' fill='${c}'/><circle cx='61' cy='48' r='3.4' fill='${c}'/>`+
+  `<path d='M32 40 l12 4 M68 40 l-12 4' stroke='#1b2129' stroke-width='3'/>`+
+  `<circle cx='19' cy='50' r='6' fill='${c}' stroke='#111' stroke-width='2'/><circle cx='81' cy='50' r='6' fill='${c}' stroke='#111' stroke-width='2'/></svg>`;
+  return 'data:image/svg+xml,' + encodeURIComponent(s);
+}
+const FAILED = new Set();
+function pimg(file, fb, cls=''){
+  if (FAILED.has(file)) return fb.startsWith('data:') ? `<img class="${cls}" src="${fb}" draggable="false">` : `<span class="emo ${cls}">${fb}</span>`;
+  return `<img class="${cls}" src="${IMG}${file}.png?v=${IMGV}" data-f="${file}" data-fb="${fb}" onerror="kbFb(this)" draggable="false">`;
+}
+window.kbFb = function(el){
+  el.onerror = null; FAILED.add(el.dataset.f);
+  const fb = el.dataset.fb;
+  if (fb.startsWith('data:')) el.src = fb;
+  else { const s = document.createElement('span'); s.className = 'emo ' + el.className; s.textContent = fb; el.replaceWith(s); }
+};
+function art(id){
+  const x = ALL[id]; if (!x) return '';
+  if (x.img) return `<img src="${esc(x.img)}" data-f="x_${id}" data-fb="${x.t==='sus'?robotSVG(x.c):x.e}" onerror="kbFb(this)" draggable="false">`;
+  if (x.t==='sus') return pimg('pj_'+id, robotSVG(x.c));
+  if (x.t==='wea') return pimg('arma_'+id, x.e);
+  return pimg('sala_'+id, x.e);
+}
+const lucas = n => pimg('victima_'+n, robotSVG('#17ff5f', n===4));
+/* personaje con propulsores animados (las imágenes vienen sin llamas) */
+function botFx(id){ const x=ALL[id]; return `<div class="bot" style="--fc:${x.c}">${art(id)}<div class="fl"><i></i><i></i><i></i></div></div>`; }
+/* Lucas roto con chispas y humo */
+function brokenFx(n){
+  let fx=''; const sp=[[30,40,-40,-50],[62,30,50,-60],[48,55,-20,-70],[70,58,60,-30],[25,62,-55,-20]];
+  sp.forEach((p,k)=>fx+=`<i class="sp" style="left:${p[0]}%;top:${p[1]}%;--dx:${p[2]}px;--dy:${p[3]}px;animation-delay:${k*.31}s"></i>`);
+  fx+=`<i class="sm" style="left:40%;top:25%"></i><i class="sm" style="left:58%;top:30%;animation-delay:1.6s"></i>`;
+  return `<div class="broken">${lucas(n)}${fx}</div>`;
+}
+function cardHTML(id, cls=''){
+  const x = ALL[id]; const tl = x.t==='sus'?'Sospechoso':x.t==='wea'?'Arma':'Sala';
+  return `<div class="kcard ${cls}" data-id="${id}" style="--c:${x.c}"><div class="in"><div class="tp">${tl}</div><div class="art">${art(id)}</div><div class="nm">${x.n}</div></div><i class="holo"></i></div>`;
+}
+
+/* ═════════════ SONIDO (Web Audio) ═════════════ */
+const AU = {ctx:null, on: (localStorage.getItem('kb_snd') !== '0')};
+function ac(){ if(!AU.ctx){ try{ AU.ctx = new (window.AudioContext||window.webkitAudioContext)(); }catch(e){} } if(AU.ctx&&AU.ctx.state==='suspended') AU.ctx.resume(); return AU.ctx; }
+function tone(f, d, type='sine', v=.12, f2=null, delay=0){
+  if(!AU.on) return; const c = ac(); if(!c) return;
+  const t = c.currentTime + delay, o = c.createOscillator(), g = c.createGain();
+  o.type = type; o.frequency.setValueAtTime(f, t); if (f2) o.frequency.exponentialRampToValueAtTime(f2, t+d);
+  g.gain.setValueAtTime(v, t); g.gain.exponentialRampToValueAtTime(.0001, t+d);
+  o.connect(g); g.connect(c.destination); o.start(t); o.stop(t+d+.02);
+}
+function noise(d, v=.15, delay=0){
+  if(!AU.on) return; const c = ac(); if(!c) return;
+  const b = c.createBuffer(1, c.sampleRate*d, c.sampleRate), a = b.getChannelData(0);
+  for (let i=0;i<a.length;i++) a[i] = (Math.random()*2-1)*(1-i/a.length);
+  const s = c.createBufferSource(), g = c.createGain(), f = c.createBiquadFilter();
+  f.type='bandpass'; f.frequency.value=1800; s.buffer=b; g.gain.value=v;
+  s.connect(f); f.connect(g); g.connect(c.destination); s.start(c.currentTime+delay);
+}
+const SFX = {
+  click(){ tone(880,.06,'square',.05); },
+  dice(){ for(let i=0;i<9;i++) noise(.05,.12,i*.11); tone(660,.15,'triangle',.1,null,1.1); },
+  whoosh(){ tone(200,.5,'sawtooth',.06,1400); noise(.4,.08); },
+  alarm(){ for(let i=0;i<3;i++){ tone(720,.22,'square',.07,null,i*.45); tone(540,.22,'square',.07,null,i*.45+.22);} },
+  reveal(){ [523,659,784,1046].forEach((f,i)=>tone(f,.25,'triangle',.09,null,i*.08)); },
+  fail(){ tone(300,.8,'sawtooth',.1,60); noise(.6,.2); },
+  win(){ [523,659,784,1046,784,1046,1318].forEach((f,i)=>tone(f,.3,'square',.06,null,i*.13)); },
+  turn(){ tone(988,.12,'sine',.12); tone(1318,.2,'sine',.12,null,.12); },
+  sus(){ tone(110,1,'sawtooth',.08,55); tone(220,.6,'triangle',.05,null,.3); }
+};
+document.addEventListener('pointerdown', ()=>ac(), {once:true});
+
+/* ═════════════ ESTRELLAS ═════════════ */
+(function(){
+  const cv = document.getElementById('stars'), x = cv.getContext('2d'); let W,H,st=[],sh=null;
+  function rs(){ W=cv.width=innerWidth*devicePixelRatio; H=cv.height=innerHeight*devicePixelRatio;
+    st=Array.from({length:Math.min(260,Math.floor(W*H/9000))},()=>({x:Math.random()*W,y:Math.random()*H,z:Math.random()*1+.2,p:Math.random()*6})); }
+  addEventListener('resize', rs); rs();
+  function fr(t){
+    x.clearRect(0,0,W,H);
+    for (const s of st){ s.y += s.z*.35*devicePixelRatio; if (s.y>H){s.y=0;s.x=Math.random()*W;}
+      const a = .35+.65*Math.abs(Math.sin(t/900+s.p)); x.fillStyle=`rgba(${200+s.z*50|0},${220+s.z*30|0},255,${a*s.z})`;
+      x.fillRect(s.x,s.y,s.z*2*devicePixelRatio,s.z*2*devicePixelRatio); }
+    if (!sh && Math.random()<.004) sh={x:Math.random()*W,y:Math.random()*H*.5,l:0};
+    if (sh){ sh.l+=18*devicePixelRatio; const g=x.createLinearGradient(sh.x,sh.y,sh.x-sh.l*.7,sh.y-sh.l*.35);
+      g.addColorStop(0,'rgba(255,255,255,.9)'); g.addColorStop(1,'rgba(34,228,255,0)'); x.strokeStyle=g; x.lineWidth=2*devicePixelRatio;
+      x.beginPath(); x.moveTo(sh.x+sh.l,sh.y+sh.l*.5); x.lineTo(sh.x+sh.l*.3,sh.y+sh.l*.15); x.stroke(); if (sh.l>W*.5) sh=null; }
+    requestAnimationFrame(fr);
+  }
+  requestAnimationFrame(fr);
+})();
+
+/* ═════════════ UTIL ═════════════ */
+const $ = s => document.querySelector(s);
+const app = $('#app'), fx = $('#fx');
+const esc = s => String(s==null?'':s).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+let toastT;
+function toast(m, err){ const t=$('#toast'); t.textContent=m; t.className=(err?'err ':'')+'on'; clearTimeout(toastT); toastT=setTimeout(()=>t.className='',3200); }
+function api(accion, d){
+  return fetch(CFG.API, {method:'POST', body: JSON.stringify(Object.assign({accion}, d||{}))})
+    .then(r=>r.json()).catch(()=>({ok:false, error:'Sin conexión. Inténtalo otra vez.'}));
+}
+async function call(accion, d){
+  const r = await api(accion, d);
+  if (!r.ok){ if (r.error==='SESION'){ logout(true); throw new Error('Tu sesión ha caducado. Vuelve a entrar.'); } throw new Error(r.error||'Error'); }
+  return r;
+}
+const G = (accion, d) => call(accion, Object.assign({code:S.code, tk:S.token}, d||{}));
+const errMsg = e => (e && e.message ? e.message : String(e)).replace(/^Error:\s*/,'').replace(/^Exception:\s*/,'');
+function vib(p){ try{ navigator.vibrate && navigator.vibrate(p); }catch(e){} }
+function joinUrl(code){ return BASE + (BASE.indexOf('?')>=0?'&':'?') + 'sala=' + code; }
+
+const S = { code:null, token:null, pid:null, modo:null, g:null, ver:0, lastEv:null, screen:'menu', busy:false, tab:null, endShown:false, refKey:null, myTurnSeen:null };
+function saveSess(){ try{ localStorage.setItem('kb_sess', JSON.stringify({code:S.code,token:S.token,pid:S.pid,modo:S.modo,t:Date.now()})); }catch(e){} }
+function loadSess(){ try{ const s=JSON.parse(localStorage.getItem('kb_sess')||'null'); if(s && Date.now()-s.t<6*3600e3) return s; }catch(e){} return null; }
+function clearSess(){ try{ localStorage.removeItem('kb_sess'); }catch(e){} }
+
+/* ═════════════ MENÚ ═════════════ */
+function logoHTML(){ return `<div class="logo">${FAILED.has('logo')?`<div class="logoTxt" data-t="KILLBOT">KILLBOT</div>`:`<img class="lg" src="${IMG}logo.png" onerror="this.outerHTML='<div class=&quot;logoTxt&quot; data-t=&quot;KILLBOT&quot;>KILLBOT</div>'">`}<div class="sub">ASESINATO EN LA NAVE KB-9</div></div>`; }
+
+function showMenu(){
+  S.screen='menu'; stopPoll();
+  const s = loadSess();
+  app.innerHTML = `<div class="screen"><div class="menu">
+    ${logoHTML()}
+    <div class="hero">${brokenFx(1)}</div>
+    ${PUB.banner?`<div class="banner">📢 ${esc(PUB.banner)}</div>`:''}
+    ${USER?`<div class="userChip"><span>👤 ${esc(USER.user.nombre)}</span><button id="bOut">Cerrar sesión</button></div>`:''}
+    ${s ? `<button class="btn gold" id="bCont">▶ Volver a la partida ${esc(s.code)}</button>` : ''}
+    <button class="btn big green" id="bMov">📱 Crear partida solo móviles</button>
+    <button class="btn" id="bTv">📺 Crear partida en TV / PC</button>
+    <button class="btn" id="bJoin">🔑 Unirme a una partida</button>
+    ${!USER?`<button class="btn ghost sm" id="bLog" style="align-self:center">👤 Iniciar sesión</button>`:''}
+    <div class="row"><button class="btn ghost sm" id="bHow">📖 Cómo se juega</button><button class="btn ghost sm" id="bInst">📲 Instalar</button><button class="btn ghost sm" id="bShare">📤 Compartir</button></div>
+    <div class="foot">FuturMovil · KILLBOT</div>
+  </div></div>`;
+  if (s) $('#bCont').onclick = ()=>{ Object.assign(S,{code:s.code,token:s.token,pid:s.pid,modo:s.modo}); enterRoom(); };
+  holdBtn($('#bMov'), 5000, ()=>Admin.abrir(), ()=>{ SFX.click(); create('movil', USER?USER.user.nombre:''); });
+  logoTaps(app.querySelector('.logo'));
+  $('#bInst').onclick = instalar;
+  if ($('#bOut')) $('#bOut').onclick = ()=>{ logout(); showMenu(); };
+  if ($('#bLog')) $('#bLog').onclick = ()=>showLogin();
+  $('#bTv').onclick = ()=>{ SFX.click(); create('tv',''); };
+  $('#bJoin').onclick = ()=>{ SFX.click(); showJoin(''); };
+  $('#bHow').onclick = ()=>{ SFX.click(); howTo(); };
+  $('#bShare').onclick = ()=>share(BASE, '🤖💀 Juega conmigo a KILLBOT, el cluedo espacial:');
+}
+
+function share(url, text){
+  if (navigator.share) navigator.share({title:'KILLBOT', text, url}).catch(()=>{});
+  else window.open('https://wa.me/?text=' + encodeURIComponent(text + ' ' + url), '_blank');
+}
+
+function myName(){ try{ return localStorage.getItem('kb_name')||''; }catch(e){ return ''; } }
+function askName(cb){
+  app.innerHTML = `<div class="screen"><div class="menu glass" style="padding:22px">
+    <h2 class="t">Identifícate, tripulante</h2>
+    <div class="lbl">Tu nombre</div>
+    <input class="inp" id="iName" maxlength="14" value="${esc(myName())}" placeholder="Tu nombre">
+    <button class="btn big green" id="bOk">Continuar ▶</button>
+    <button class="btn ghost" id="bBack">← Volver</button></div></div>`;
+  const i = $('#iName'); setTimeout(()=>i.focus(),100);
+  const go = ()=>{ const n=i.value.trim(); if(!n) return toast('Pon tu nombre',1); try{localStorage.setItem('kb_name',n);}catch(e){} cb(n); };
+  $('#bOk').onclick = go; i.onkeydown = e=>{ if(e.key==='Enter') go(); };
+  $('#bBack').onclick = showMenu;
+}
+
+function showJoin(code){
+  app.innerHTML = `<div class="screen"><div class="menu glass" style="padding:22px">
+    <h2 class="t">Unirse a partida</h2>
+    <div class="lbl">Código de la sala</div>
+    <input class="inp code" id="iCode" maxlength="4" value="${esc(code)}" placeholder="ABCD" autocapitalize="characters">
+    <div class="lbl">Tu nombre</div>
+    <input class="inp" id="iName" maxlength="14" value="${esc(myName())}" placeholder="Tu nombre">
+    <button class="btn big green" id="bOk">🚀 Subir a bordo</button>
+    <button class="btn ghost" id="bBack">← Volver</button></div></div>`;
+  const ic=$('#iCode'), inn=$('#iName');
+  ic.oninput = ()=>{ ic.value = ic.value.toUpperCase().replace(/[^A-Z]/g,''); };
+  setTimeout(()=>(code?inn:ic).focus(),100);
+  $('#bOk').onclick = async ()=>{
+    const c=ic.value.trim(), n=inn.value.trim();
+    if (c.length!==4) return toast('El código tiene 4 letras',1);
+    if (!n) return toast('Pon tu nombre',1);
+    try{ localStorage.setItem('kb_name',n); }catch(e){}
+    loading('Conectando con la nave…');
+    try{ const r = await call('unirse', {code:c, nombre:n}); Object.assign(S,{code:r.code,token:r.token,pid:r.pid,modo:r.modo}); saveSess(); SFX.whoosh(); enterRoom(); }
+    catch(e){ toast(errMsg(e),1); showJoin(c); }
+  };
+  $('#bBack').onclick = showMenu;
+}
+
+function loading(t){ app.innerHTML = `<div class="screen"><div class="spinner"></div><p style="font-family:Orbitron;letter-spacing:2px;color:var(--mut)">${esc(t)}</p></div>`; }
+
+async function create(modo, name){
+  if (!USER) return showLogin(()=>create(modo, name));
+  if (PUB.mant) return toast('🚧 '+(PUB.mantMsg||'Juego en mantenimiento'),1);
+  loading('Preparando la nave…');
+  try{ const r = await call('crear', {ses:USER&&USER.ses, modo}); Object.assign(S,{code:r.code,token:r.token,pid:r.pid||null,modo:r.modo}); saveSess(); SFX.whoosh(); enterRoom(); }
+  catch(e){ toast(errMsg(e),1); USER ? showMenu() : showLogin(()=>create(modo,name)); }
+}
+
+function howTo(){
+  modal(`<h2 class="t">Cómo se juega</h2><div class="howto">
+  <p>🚨 <b>Lucas</b>, el robot jefe de la nave KB-9, ha aparecido desguazado. Uno de los 9 tripulantes lo ha hecho, con una de las 9 armas y en una de las 9 salas. La solución está escondida en el <b>sobre secreto</b>.</p>
+  <h3>🃏 TUS CARTAS</h3><p>Al empezar se reparten el resto de cartas. Lo que tienes en la mano <b>no</b> está en el sobre. Ve tachando en tu 📝 Libreta.</p>
+  <h3>🎲 TU TURNO</h3><p>Tira los propulsores: con 1-2 avanzas 1 sala, con 3-4 hasta 2 y con 5-6 hasta 3. Las líneas de colores son <b>teletransportadores</b> que cruzan la nave. Desde el Núcleo central llegas a cualquier sala.</p>
+  <h3>🔍 SOSPECHAR</h3><p>Al entrar en una sala, sospecha de un robot y un arma <b>en esa sala</b>. El robot sospechoso vuela hasta allí. El siguiente jugador que tenga alguna de esas cartas te enseñará una en secreto.</p>
+  <h3>⚖️ ACUSAR</h3><p>Cuando lo tengas claro, acusa (en cualquier momento de tu turno). Si aciertas, ganas. Si fallas, quedas eliminado, aunque seguirás enseñando cartas.</p>
+  <h3>📺 MODOS</h3><p><b>TV/PC:</b> la pantalla grande es el tablero y cada uno juega con su móvil. <b>Solo móviles:</b> un móvil crea la sala y los demás entran con el QR o el código; todos ven el tablero en su móvil.</p>
+  </div><button class="btn green" onclick="closeModal()">¡Entendido!</button>`);
+}
+
+/* ═════════════ MODALES ═════════════ */
+function modal(html, onClose){
+  closeModal();
+  const m = document.createElement('div'); m.className='modal'; m.id='modal';
+  m.innerHTML = `<div class="box">${html}</div>`;
+  m.onclick = e=>{ if (e.target===m && !m.dataset.lock){ closeModal(); onClose && onClose(); } };
+  fx.appendChild(m); return m;
+}
+function closeModal(){ const m=$('#modal'); if(m) m.remove(); }
+
+/* ═════════════ SALA ═════════════ */
+let pollT=null, polling=false;
+function startPoll(){ stopPoll(); pollT=setInterval(poll, 1100); poll(); }
+function stopPoll(){ if(pollT) clearInterval(pollT); pollT=null; }
+async function poll(){
+  if (polling || !S.code) return; polling=true;
+  try{ const g = await api('estado', {code:S.code, tk:S.token, ver:S.ver}); onState(g); }
+  catch(e){} finally{ polling=false; }
+}
+function enterRoom(){ S.ver=0; S.g=null; S.lastEv=null; S.endShown=false; S.screen=''; loading('Conectando…'); startPoll(); }
+
+function onState(g){
+  if (!g || g.ok===false) return;
+  if (g.gone){ toast('La partida ya no existe',1); clearSess(); S.code=null; return showMenu(); }
+  if (g.same) return;
+  const prev = S.g; S.g = g; S.ver = g.ver;
+  if (g.me) S.pid = g.me;
+  if (g.status==='lobby'){
+    if (S.screen!=='lobby') S.endShown=false;
+    S.lastEv = g.evn; renderLobby(); return;
+  }
+  if (S.screen!=='game'){ buildGame(); if (S.lastEv==null) S.lastEv = g.evn; else if (prev && prev.status==='lobby') {} }
+  handleEvents(g);
+  updateGame(prev);
+}
+
+function amHost(){ return S.g && S.g.isHost; }
+function meP(){ return S.g && S.g.players.find(p=>p.id===S.g.me); }
+
+function renderLobby(){
+  const g=S.g; S.screen='lobby';
+  if (g.modo==='tv' && !g.me) return renderTvLobby();
+  const me = meP(), url = joinUrl(g.code);
+  const owner = {}; g.players.forEach(p=>owner[p.sus]=p);
+  app.innerHTML = `<div class="screen" style="justify-content:flex-start"><div class="lobby">
+    <div class="glass codeBox">
+      <div class="qr" id="qr"></div>
+      <div style="flex:1;min-width:0">
+        <div class="lbl">Código de la sala</div>
+        <div class="bigCode">${g.code}</div>
+        <div style="color:var(--mut);font-size:14px;margin:2px 0 8px">Escanea el QR o entra con el código</div>
+        <button class="btn sm ghost" id="bShare">📤 Invitar</button>
+      </div>
+    </div>
+    <div class="glass" style="padding:14px">
+      <div class="lbl">Elige tu robot</div>
+      <div class="chars">${SUS.map(s=>{ const o=owner[s.id]; const mine=o&&o.id===g.me;
+        return `<div class="ch ${mine?'mine':''} ${o&&!mine?'taken':''}" data-s="${s.id}" style="--c:${s.c}"><i class="dot"></i>${botFx(s.id)}<div class="nm">${s.n}</div><div class="ow">${o?esc(o.name)+(o.bot?' 🤖':''):'libre'}</div></div>`; }).join('')}</div>
+    </div>
+    <div class="glass" style="padding:14px">
+      <div class="lbl">Tripulación (${g.players.length}/9)</div>
+      <div class="plist">${g.players.map(p=>`<div class="pl" style="--c:${ALL[p.sus].c}">${art(p.sus)}<div class="n">${esc(p.name)}</div><div class="tag">${p.host?'👑 ANFITRIÓN':p.bot?'🤖 BOT':''}</div>${amHost()&&!p.host?`<button class="x" data-k="${p.id}">✕</button>`:''}</div>`).join('')}</div>
+    </div>
+    ${amHost()?`<div class="row"><button class="btn" id="bBot" ${g.players.length>=9?'disabled':''}>🤖 Añadir bot</button></div>
+      <button class="btn big green" id="bGo" ${g.players.length<2?'disabled':''}>▶ Empezar partida</button>`
+      :`<div class="glass" style="padding:16px;text-align:center;font-size:17px">⏳ Esperando a que el anfitrión empiece…</div>`}
+    <button class="btn ghost sm" id="bExit" style="align-self:center">Salir</button>
+  </div></div>`;
+  drawQR($('#qr'), url, 116);
+  $('#bShare').onclick = ()=>share(url, '🤖💀 ¡Únete a mi partida de KILLBOT! Código ' + g.code + ':');
+  app.querySelectorAll('.ch').forEach(el=>el.onclick=async()=>{
+    if (el.classList.contains('taken')||el.classList.contains('mine')) return; SFX.click();
+    try{ onState(await G('elegir', {sus:el.dataset.s})); }catch(e){ toast(errMsg(e),1); }
+  });
+  app.querySelectorAll('.x').forEach(b=>b.onclick=async()=>{ try{ onState(await G('quitar', {pid:b.dataset.k})); }catch(e){toast(errMsg(e),1);} });
+  if ($('#bBot')) $('#bBot').onclick = async()=>{ SFX.click(); try{ onState(await G('bot')); }catch(e){toast(errMsg(e),1);} };
+  if ($('#bGo')) $('#bGo').onclick = startGame;
+  $('#bExit').onclick = exitGame;
+}
+
+function renderTvLobby(){
+  const g=S.g, url=joinUrl(g.code);
+  const owner={}; g.players.forEach(p=>owner[p.sus]=p);
+  app.innerHTML = `<div class="tvLobby">
+    <div class="left">
+      ${logoHTML()}
+      <div class="qr" id="qr"></div>
+      <div class="hint">Escanea con tu móvil o entra con el código</div>
+      <div class="bigCode">${g.code}</div>
+      <div class="row" style="width:100%;max-width:520px">
+        <button class="btn" id="bBot" ${g.players.length>=9?'disabled':''}>🤖 Añadir bot</button>
+        <button class="btn green" id="bGo" ${g.players.length<2?'disabled':''}>▶ Empezar</button>
+      </div>
+    </div>
+    <div class="slots">${SUS.map(s=>{ const o=owner[s.id];
+      return `<div class="slot ${o?'on':'off'}" style="--c:${s.c}">${botFx(s.id)}<div class="nm">${s.n}</div><div class="ow">${o?esc(o.name)+(o.bot?' 🤖':''):'—'}</div></div>`; }).join('')}</div>
+  </div>`;
+  drawQR($('#qr'), url, Math.round(innerHeight*.34));
+  $('#bBot').onclick = async()=>{ SFX.click(); try{ onState(await G('bot')); }catch(e){toast(errMsg(e),1);} };
+  $('#bGo').onclick = startGame;
+}
+
+function drawQR(el, text, size){
+  try{ const q=qrcode(0,'M'); q.addData(text); q.make(); const cell=Math.max(2,Math.ceil(size/q.getModuleCount()));
+    el.innerHTML=`<img src="${q.createDataURL(cell,0)}" width="${size}" height="${size}" style="image-rendering:pixelated" alt="QR">`; }
+  catch(e){ el.innerHTML = `<div style="width:${size}px;height:${size}px;display:flex;align-items:center;justify-content:center;color:#000;font-weight:700">${esc(text)}</div>`; }
+}
+
+async function startGame(){
+  SFX.click();
+  try{ onState(await G('empezar')); }catch(e){ toast(errMsg(e),1); }
+}
+function exitGame(){
+  if (S.g && S.g.status==='lobby' && S.g.me && !S.g.isHost) G('quitar', {pid:S.g.me}).catch(()=>{});
+  clearSess(); S.code=null; S.g=null; closeModal(); fx.innerHTML=''; showMenu();
+}
+
+/* ═════════════ JUEGO ═════════════ */
+const isTV = () => S.g && S.g.modo==='tv' && !S.g.me;
+
+function buildGame(){
+  S.screen='game'; S.tab=null;
+  if (isTV()){
+    app.innerHTML = `<div class="game tv"><div class="boardWrap" style="align-items:center"><div id="board" class="board"></div></div>
+      <div class="tvSide">
+        <div style="display:flex;align-items:center;justify-content:space-between">${logoHTML()}<div class="cd" style="font-family:Orbitron;font-size:2.4vh;color:var(--mut)">SALA ${S.g.code}</div></div>
+        <div id="turnB" class="turnB"></div>
+        <div id="plist" class="plist"></div>
+        <div class="narr">${lucas(4)}<div class="bubble" id="bubble"></div></div>
+        <div class="tvLog" id="tvLog"></div>
+      </div></div>`;
+  } else {
+    app.innerHTML = `<div class="game ph">
+      <div class="gbar"><div class="cd">${S.g.code}</div><div id="turnB" class="turnB"></div><button class="ib" id="bSnd">${AU.on?'🔊':'🔇'}</button><button class="ib" id="bMenu">☰</button></div>
+      <div class="boardWrap"><div id="board" class="board"></div></div>
+      <div id="panel" class="panel"></div>
+      <nav class="tabs"><button data-t="hand">🃏 Cartas</button><button data-t="notes">📝 Libreta</button><button data-t="log">📜 Registro</button><button data-t="players">👥 Equipo</button></nav>
+      <div id="drawer" class="drawer"></div></div>`;
+    app.querySelectorAll('.tabs button').forEach(b=>b.onclick=()=>{ SFX.click(); openTab(S.tab===b.dataset.t?null:b.dataset.t); });
+    $('#bSnd').onclick = ()=>{ AU.on=!AU.on; try{localStorage.setItem('kb_snd',AU.on?'1':'0');}catch(e){} $('#bSnd').textContent=AU.on?'🔊':'🔇'; };
+    $('#bMenu').onclick = ()=>modal(`<h2 class="t">Menú</h2><div style="display:flex;flex-direction:column;gap:10px">
+      <button class="btn" onclick="closeModal();howTo()">📖 Cómo se juega</button>
+      <button class="btn" onclick="share(joinUrl(S.code),'Partida KILLBOT ' + S.code + ':')">📤 Compartir sala</button>
+      <button class="btn red" onclick="if(confirm('¿Salir de la partida?')) exitGame()">🚪 Salir al menú</button>
+      <button class="btn ghost" onclick="closeModal()">Cerrar</button></div>`);
+  }
+  buildBoard($('#board'));
+}
+
+function roomXY(i){ const a = (-90 + i*40) * Math.PI/180; return {x:50+38*Math.cos(a), y:50+38*Math.sin(a)}; }
+function locXY(loc){ if (loc==='nucleo') return {x:50,y:50}; const i=ROOMS.findIndex(r=>r.id===loc); return roomXY(i<0?0:i); }
+
+function buildBoard(el){
+  const teleCols = ['#ff3bd4','#ffd23f','#17ff5f'];
+  let svg = `<svg class="lines" viewBox="0 0 100 100"><circle class="ringL" cx="50" cy="50" r="38"/>`;
+  ROOMS.forEach((r,i)=>{ const p=roomXY(i); svg+=`<line class="spoke" x1="50" y1="50" x2="${p.x}" y2="${p.y}"/>`; });
+  TELE.forEach((t,k)=>{ const a=roomXY(t[0]), b=roomXY(t[1]); const mx=(a.x+b.x)/2, my=(a.y+b.y)/2; const cx=50+(mx-50)*.25, cy=50+(my-50)*.25;
+    svg+=`<path class="tele" d="M${a.x} ${a.y} Q${cx} ${cy} ${b.x} ${b.y}" stroke="${teleCols[k]}" style="filter:drop-shadow(0 0 1px ${teleCols[k]})"/>`; });
+  svg += `</svg>`;
+  let h = svg + `<div class="core" data-room="nucleo">${pimg('sala_nucleo','🔴')}<div class="rname" style="bottom:-9%">Núcleo</div></div>`;
+  ROOMS.forEach((r,i)=>{ const p=roomXY(i); h+=`<div class="room" data-room="${r.id}" style="left:${p.x}%;top:${p.y}%;--rc:${r.c}">${art(r.id)}<div class="rname">${r.n}</div></div>`; });
+  SUS.forEach(s=>{ h+=`<div class="tok" id="tok_${s.id}" style="--c:${s.c};left:50%;top:50%"><i class="disc"></i>${art(s.id)}</div>`; });
+  WEA.forEach(w=>{ h+=`<div class="wtok" id="wt_${w.id}" style="left:50%;top:50%">${art(w.id)}</div>`; });
+  el.innerHTML = h;
+  el.onclick = e=>{ const r=e.target.closest('[data-room]'); if (r && r.classList.contains('reach')){ SFX.whoosh(); act('mover',{room:r.dataset.room}); } };
+}
+
+function updateBoard(){
+  const g=S.g, el=$('#board'); if(!el) return;
+  const played = {}; g.players.forEach(p=>played[p.sus]=p);
+  const cur = g.players[g.turn];
+  const groups = {};
+  SUS.forEach(s=>{ const l=g.pos[s.id]||'nucleo'; (groups[l]=groups[l]||[]).push(s.id); });
+  Object.keys(groups).forEach(l=>{
+    const c=locXY(l), arr=groups[l], n=arr.length, r = l==='nucleo' ? (n>1?7:0) : (n>1?(n>3?6:5):0);
+    arr.forEach((id,k)=>{ const a=(k/n)*Math.PI*2 - Math.PI/2; const t=$('#tok_'+id); if(!t) return;
+      t.style.left=(c.x+r*Math.cos(a))+'%'; t.style.top=(c.y+r*Math.sin(a)-1)+'%';
+      const p=played[id]; t.className='tok'+(p?'':' npc')+(p&&cur&&cur.id===p.id?' cur':'')+(p&&!p.alive?' dead':''); });
+  });
+  const wg = {};
+  WEA.forEach(w=>{ const l=g.wpos[w.id]; (wg[l]=wg[l]||[]).push(w.id); });
+  Object.keys(wg).forEach(l=>{ const c=locXY(l), arr=wg[l];
+    arr.forEach((id,k)=>{ const t=$('#wt_'+id); if(!t) return; t.style.left=(c.x+7.5)+'%'; t.style.top=(c.y-6+k*5)+'%'; }); });
+  const mine = cur && cur.id===g.me && g.phase==='mover';
+  const here = cur ? g.pos[cur.sus] : null;
+  el.querySelectorAll('[data-room]').forEach(r=>{
+    r.classList.toggle('reach', !!(mine && g.reach.includes(r.dataset.room)));
+    r.classList.toggle('here', r.dataset.room===here);
+  });
+}
+
+function flashRoom(id){ const r=document.querySelector(`#board [data-room="${id}"]`); if(!r) return; r.classList.remove('flash'); void r.offsetWidth; r.classList.add('flash'); }
+
+function phaseText(g, p){
+  const cur=g.players[g.turn]; const n=esc(cur.name);
+  if (g.phase==='tirar') return `${n} va a tirar los propulsores`;
+  if (g.phase==='mover') return `${n} sacó ${g.dice} y está eligiendo sala`;
+  if (g.phase==='sospechar') return `${n} está pensando una sospecha…`;
+  if (g.phase==='refutar'){ const r=g.players.find(x=>x.id===g.sug.refuter); return `Esperando a que ${esc(r?r.name:'')} enseñe una carta`; }
+  if (g.phase==='accion') return `${n} está decidiendo…`;
+  return '';
+}
+
+function updateGame(prev){
+  const g=S.g; if (S.screen!=='game') return;
+  const cur=g.players[g.turn]; const cs=ALL[cur.sus];
+  const tb=$('#turnB');
+  if (g.status==='ended'){
+    const w=g.players.find(p=>p.id===g.winner);
+    tb.style.setProperty('--c', w?ALL[w.sus].c:'#888');
+    tb.innerHTML = `${w?art(w.sus):''}<div style="min-width:0"><b>🏆 ${w?esc(w.name):'Sin ganador'}</b><small>Caso cerrado</small></div>`;
+  } else {
+    tb.style.setProperty('--c', cs.c);
+    tb.innerHTML = `${art(cur.sus)}<div style="min-width:0"><b>${cur.id===g.me?'¡TU TURNO!':'Turno de '+esc(cur.name)}</b><small>${phaseText(g)}</small></div>`;
+  }
+  updateBoard();
+  if (isTV()) updateTvSide(); else { renderPanel(); if (S.tab) openTab(S.tab, true); }
+  // ¿me toca?
+  const key = g.turn+'_'+(g.evn);
+  if (g.status==='playing' && cur.id===g.me && g.phase==='tirar' && S.myTurnSeen!==g.turn+':'+g.ver && (!prev || prev.turn!==g.turn || prev.status!=='playing')){
+    S.myTurnSeen=g.turn+':'+g.ver; SFX.turn(); vib([80,60,80]); toast('🎯 ¡Te toca! Tira los propulsores');
+  }
+  // ¿me toca enseñar carta?
+  if (g.phase==='refutar' && g.sug && g.sug.refuter===g.me && g.sug.options){
+    const k = g.sug.by+g.sug.sus+g.sug.wea+g.sug.room+g.evn;
+    if (S.refKey!==k){ S.refKey=k; showRefute(); }
+  } else if (S.refKey && $('#modal') && $('#modal').dataset.ref){ closeModal(); S.refKey=null; }
+  if (g.status==='ended' && !S.endShown && !evBusy && !evQ.length){ S.endShown=true; showEnd(); }
+}
+
+function renderPanel(){
+  const g=S.g, pn=$('#panel'); if(!pn) return;
+  const me=meP(), cur=g.players[g.turn], my = cur.id===g.me;
+  let h='';
+  if (g.status==='ended'){
+    h = `<button class="btn gold big" onclick="showEnd()">🏆 Ver la solución</button>`;
+  } else if (me && !me.alive){
+    h = `<div class="ptxt">💀 Has sido eliminado.<br><small>Sigues enseñando cartas cuando te pregunten.</small></div><button class="btn ghost" onclick="showSol()">👁️ Ver el sobre secreto</button>`;
+  } else if (!my){
+    h = `<div class="ptxt">${phaseText(g)}</div>`;
+    if (g.sug && g.sug.result && g.phase!=='refutar') h += sugMini();
+  } else if (g.phase==='tirar'){
+    h = `<button class="btn big green" id="bRoll">🎲 Tirar propulsores</button>`;
+    if (me.summoned && g.pos[me.sus]!=='nucleo') h += `<button class="btn" id="bStay">📍 Quedarme en ${NM(g.pos[me.sus])} y sospechar</button>`;
+    h += `<button class="btn red" id="bAcc">⚖️ Acusar</button>`;
+  } else if (g.phase==='mover'){
+    h = `<div class="ptxt">Sacaste <span class="diceMini">${g.dice}</span> → avanza hasta <b>${PASOS[g.dice]} sala${PASOS[g.dice]>1?'s':''}</b>.<br>Toca una sala <b style="color:var(--lucas)">iluminada</b> del mapa.</div><button class="btn red sm" style="align-self:center" id="bAcc">⚖️ Acusar</button>`;
+  } else if (g.phase==='sospechar'){
+    h = `<div class="ptxt">Estás en <b>${NM(g.pos[me.sus])}</b></div><button class="btn big" id="bSus">🔍 Lanzar sospecha</button><div class="row"><button class="btn ghost" id="bSkip">Saltar</button><button class="btn red" id="bAcc">⚖️ Acusar</button></div>`;
+  } else if (g.phase==='refutar'){
+    h = `<div class="ptxt">${phaseText(g)}</div>`;
+  } else if (g.phase==='accion'){
+    h = sugMini() + `<div class="row"><button class="btn red" id="bAcc">⚖️ Acusar</button><button class="btn green" id="bEnd">✅ Terminar turno</button></div>`;
+  }
+  pn.innerHTML = h;
+  const on=(id,f)=>{ const b=$(id); if(b) b.onclick=f; };
+  on('#bRoll', ()=>{ SFX.click(); act('tirar'); });
+  on('#bStay', ()=>{ SFX.click(); act('quedarse'); });
+  on('#bAcc',  ()=>{ SFX.click(); pickTrio(true); });
+  on('#bSus',  ()=>{ SFX.click(); pickTrio(false); });
+  on('#bSkip', ()=>{ SFX.click(); act('saltar'); });
+  on('#bEnd',  ()=>{ SFX.click(); act('fin'); });
+}
+
+function sugMini(){
+  const g=S.g, s=g.sug; if(!s||!s.result) return '';
+  const by=g.players.find(p=>p.id===s.by), rf=g.players.find(p=>p.id===s.refuter);
+  let r = s.result==='nadie' ? '😱 Nadie pudo desmentirlo' : s.result==='visto' ? `🛡️ ${esc(rf?rf.name:'')} enseñó una carta${s.shown?': <b>'+NM(s.shown)+'</b>':''}` : '';
+  return `<div class="ptxt" style="font-size:15px"><b>${esc(by?by.name:'')}</b>: ${NM(s.sus)} · ${NM(s.wea)} · ${NM(s.room)}<br>${r}</div>`;
+}
+
+let busyAct=false;
+async function act(type, data){
+  if (busyAct) return; busyAct=true;
+  const aid = Date.now().toString(36)+Math.random().toString(36).slice(2,7);
+  try{ onState(await G('jugar', {act:type, d:data||{}, aid})); }
+  catch(e){ toast(errMsg(e),1); }
+  finally{ busyAct=false; }
+}
+
+function pickTrio(accuse){
+  const g=S.g, me=meP(); const sel={sus:null,wea:null,room: accuse?null:g.pos[me.sus]};
+  const sec=(title,list,key)=>`<div class="lbl">${title}</div><div class="pick" data-k="${key}">${list.map(x=>cardHTML(x.id)).join('')}</div>`;
+  const m = modal(`<h2 class="t" style="${accuse?'background:linear-gradient(90deg,#fff,var(--red));-webkit-background-clip:text;background-clip:text':''}">${accuse?'⚖️ Acusación final':'🔍 Sospecha'}</h2>
+    ${accuse?'<div class="ptxt" style="margin-bottom:10px">Si fallas, quedas <b style="color:var(--red)">ELIMINADO</b>.</div>':`<div class="ptxt" style="margin-bottom:10px">En <b>${NM(sel.room)}</b>. ¿Quién fue y con qué?</div>`}
+    ${sec('¿Quién?',SUS,'sus')}${sec('¿Con qué?',WEA,'wea')}${accuse?sec('¿Dónde?',ROOMS,'room'):''}
+    <button class="btn big ${accuse?'red':'green'}" id="bConf" disabled>${accuse?'⚖️ ACUSAR':'🔍 Sospechar'}</button>
+    <button class="btn ghost" onclick="closeModal()" style="margin-top:8px">Cancelar</button>`);
+  const mine = new Set((g.hand||[]).concat(g.seen||[]));
+  m.querySelectorAll('.pick .kcard').forEach(c=>{ if (mine.has(c.dataset.id)) c.style.opacity='.55';
+    c.onclick=()=>{ SFX.click(); const k=c.parentElement.dataset.k; sel[k]=c.dataset.id;
+      c.parentElement.querySelectorAll('.kcard').forEach(x=>x.classList.toggle('sel',x===c));
+      $('#bConf').disabled = !(sel.sus&&sel.wea&&sel.room); }; });
+  $('#bConf').onclick=()=>{ closeModal(); act(accuse?'acusar':'sospechar', sel); };
+}
+
+function showRefute(){
+  const g=S.g, s=g.sug, by=g.players.find(p=>p.id===s.by);
+  const m = modal(`<h2 class="t">🛡️ Enseña una carta</h2><div class="ptxt" style="margin-bottom:12px"><b>${esc(by.name)}</b> sospecha de <b>${NM(s.sus)}</b> con <b>${NM(s.wea)}</b> en <b>${NM(s.room)}</b>.<br>Tienes varias, elige cuál le enseñas:</div>
+    <div class="pick" style="grid-template-columns:repeat(${s.options.length},1fr)">${s.options.map(c=>cardHTML(c)).join('')}</div>`);
+  m.dataset.lock=1; m.dataset.ref=1; vib([200,100,200]); SFX.alarm();
+  m.querySelectorAll('.kcard').forEach(c=>c.onclick=()=>{ SFX.reveal(); closeModal(); act('refutar',{card:c.dataset.id}); });
+}
+
+/* drawer */
+function openTab(t, refresh){
+  const d=$('#drawer'); if(!d) return; S.tab=t;
+  app.querySelectorAll('.tabs button').forEach(b=>b.classList.toggle('on', b.dataset.t===t));
+  if (!t){ d.classList.remove('open'); return; }
+  const g=S.g; let h='';
+  const head=(x)=>`<div class="hd"><b>${x}</b><button class="ib" onclick="openTab(null)">✕</button></div>`;
+  if (t==='hand'){
+    if (refresh && d.dataset.t==='hand') return;
+    h = head('🃏 MIS CARTAS') + `<div class="cards">${(g.hand||[]).map(c=>cardHTML(c)).join('')}</div>` +
+      ((g.seen||[]).length?`<div class="lbl" style="margin-top:14px">Cartas que me han enseñado</div><div class="cards">${g.seen.map(c=>cardHTML(c)).join('')}</div>`:'');
+  } else if (t==='notes'){
+    h = head('📝 LIBRETA DE DETECTIVE') + notesHTML();
+  } else if (t==='log'){
+    h = head('📜 REGISTRO') + `<div class="logL">${g.log.slice().reverse().map(l=>`<div>${esc(l.txt)}</div>`).join('')}</div>`;
+  } else if (t==='players'){
+    h = head('👥 TRIPULACIÓN') + playersHTML();
+  }
+  d.dataset.t=t; d.innerHTML=h; d.classList.add('open');
+  if (t==='notes') bindNotes();
+}
+
+function playersHTML(){
+  const g=S.g; return `<div class="plist">${g.players.map((p,i)=>`<div class="pl" style="--c:${ALL[p.sus].c};${i===g.turn&&g.status==='playing'?'background:rgba(255,255,255,.1)':''}">${art(p.sus)}
+    <div class="n">${i===g.turn&&g.status==='playing'?'▶ ':''}${esc(p.name)}${p.id===g.me?' (tú)':''}</div><div class="tag">${!p.alive?'💀 ELIMINADO':(p.bot?'🤖 ':'')+p.n+' 🃏'}</div></div>`).join('')}</div>`;
+}
+
+const nKey = ()=>'kbn_'+S.code+'_'+S.pid;
+function getNotes(){ try{ return JSON.parse(localStorage.getItem(nKey())||'{}'); }catch(e){ return {}; } }
+function setNotes(o){ try{ localStorage.setItem(nKey(), JSON.stringify(o)); }catch(e){} }
+const MARKS=['','✖','?','✔'];
+function notesHTML(){
+  const g=S.g, nt=getNotes(), hand=new Set(g.hand||[]), seen=new Set(g.seen||[]);
+  const sec=(t,list)=>`<div class="nsec"><div class="lbl">${t}</div>${list.map(x=>{ const auto=hand.has(x.id)?'mia':seen.has(x.id)?'vis':''; const mk=nt[x.id]||'';
+    return `<div class="nrow ${auto||mk==='✖'?'cross':''}" style="border-left:3px solid ${ALL[x.id].c}">${art(x.id)}<div class="n">${x.n}</div>${auto?`<span class="bd ${auto}">${auto==='mia'?'MÍA':'VISTA'}</span>`:''}<button class="mk" data-id="${x.id}">${auto?'✖':mk}</button></div>`; }).join('')}</div>`;
+  return `<div style="color:var(--mut);font-size:13px;margin-bottom:10px">Toca la casilla para marcar: ✖ descartado · ? dudoso · ✔ sospechoso. Tus cartas y las que te enseñan se tachan solas.</div>` + sec('Sospechosos',SUS)+sec('Armas',WEA)+sec('Salas',ROOMS);
+}
+function bindNotes(){
+  $('#drawer').querySelectorAll('.mk').forEach(b=>b.onclick=()=>{ const nt=getNotes(); const i=(MARKS.indexOf(nt[b.dataset.id]||'')+1)%MARKS.length; nt[b.dataset.id]=MARKS[i]; setNotes(nt); SFX.click();
+    const sc=$('#drawer').scrollTop; openTab('notes'); $('#drawer').scrollTop=sc; });
+}
+
+function updateTvSide(){
+  const g=S.g;
+  $('#plist').innerHTML = playersHTML().replace('<div class="plist">','').replace(/<\/div>$/,'');
+  const last = g.log[g.log.length-1];
+  $('#bubble').textContent = last ? last.txt : '';
+  $('#tvLog').innerHTML = g.log.slice(-12,-1).reverse().map(l=>`<div>${esc(l.txt)}</div>`).join('');
+}
+
+/* ═════════════ EVENTOS / CINEMÁTICAS ═════════════ */
+let evQ=[], evBusy=false;
+function handleEvents(g){
+  if (S.lastEv==null){ S.lastEv=g.evn; return; }
+  g.ev.filter(e=>e.n>S.lastEv).forEach(e=>evQ.push(e));
+  S.lastEv = g.evn;
+  while (evQ.length>4) evQ.shift();
+  playNext();
+}
+function playNext(){
+  if (evBusy || !evQ.length) return;
+  const e = evQ.shift(); evBusy = true;
+  const d = showEv(e);
+  setTimeout(()=>{ hideOv(); evBusy=false; playNext(); if(!evQ.length && S.g) updateGame(S.g); }, d);
+}
+function ov(html, color, extra=''){
+  hideOv(true);
+  const o=document.createElement('div'); o.className='ov '+extra; o.id='ov'; o.style.setProperty('--oc', color||'var(--neon)');
+  o.innerHTML = html + '<div class="scan"></div>'; o.onclick=()=>{}; fx.insertBefore(o, fx.firstChild); return o;
+}
+function hideOv(now){ const o=$('#ov'); if(!o) return; if(now){ o.remove(); return; } o.classList.add('out'); setTimeout(()=>o.remove(),350); }
+const pById = id => S.g.players.find(p=>p.id===id);
+
+function showEv(e){
+  const g=S.g, me=g.me; const by=pById(e.by); const bc = by?ALL[by.sus].c:'#22e4ff';
+  switch(e.type){
+    case 'inicio':
+      SFX.alarm(); vib([300,100,300]);
+      ov(`<div class="alarm"></div><h1 style="--oc:#ff3b5c">🚨 ALERTA ROJA</h1><div class="big">${brokenFx(1)}</div>
+        <p>${esc(PUB.intro||'Lucas ha sido desconectado a bordo de la KB-9. El asesino está entre la tripulación… ¡Descúbrelo!')}</p>`, '#ff3b5c');
+      return 5200;
+    case 'dado':
+      SFX.dice();
+      ov(`<div class="dice3d"><div class="cube"><div class="f1">${e.dice}</div><div class="f2">${(e.dice%6)+1}</div><div class="f3">${((e.dice+1)%6)+1}</div><div class="f4">${((e.dice+2)%6)+1}</div><div class="f5">${((e.dice+3)%6)+1}</div><div class="f6">${((e.dice+4)%6)+1}</div></div></div>
+        <p><b>${esc(by?by.name:'')}</b> saca un <b>${e.dice}</b> → avanza ${PASOS[e.dice]} sala${PASOS[e.dice]>1?'s':''}</p>`, bc);
+      return isTV()||e.by!==me ? 2300 : 1900;
+    case 'mover':
+      SFX.whoosh(); setTimeout(()=>flashRoom(e.room),300); return 600;
+    case 'sospecha':
+      SFX.sus(); setTimeout(()=>flashRoom(e.room),400);
+      ov(`<h1>🔍 SOSPECHA</h1><div class="trio">${cardHTML(e.sus,'lg')}${cardHTML(e.wea,'lg')}${cardHTML(e.room,'lg')}</div>
+        <p><b>${esc(by?by.name:'')}</b> cree que fue <b>${NM(e.sus)}</b><br>con <b>${NM(e.wea)}</b> en <b>${NM(e.room)}</b></p>`, bc);
+      return 4200;
+    case 'refutado': {
+      const rf=pById(e.ref); const s=g.sug||{};
+      if (me===e.by && s.shown){
+        SFX.reveal(); vib(120);
+        ov(`<h1>🛡️ ¡DESMENTIDO!</h1><p><b>${esc(rf?rf.name:'')}</b> te enseña en secreto:</p><div class="trio">${cardHTML(s.shown,'lg')}</div><p style="font-size:16px;opacity:.7">Apuntada en tu libreta ✔</p>`, rf?ALL[rf.sus].c:'');
+        return 4200;
+      }
+      if (me===e.ref && s.shown){
+        ov(`<h1>🛡️ CARTA ENSEÑADA</h1><p>Le has enseñado a <b>${esc(by?by.name:'')}</b>:</p><div class="trio">${cardHTML(s.shown,'lg')}</div>`, bc);
+        return 2600;
+      }
+      SFX.click();
+      ov(`<h1>🛡️ DESMENTIDO</h1><div class="trio"><div class="kcard back lg"><div class="in"></div><i class="holo"></i></div></div><p><b>${esc(rf?rf.name:'')}</b> le enseña una carta a <b>${esc(by?by.name:'')}</b></p>`, rf?ALL[rf.sus].c:'');
+      return 2800;
+    }
+    case 'nadie':
+      SFX.alarm();
+      ov(`<h1 style="--oc:#ffd23f">😱 ¡NADIE!</h1><p>Nadie puede desmentir a <b>${esc(by?by.name:'')}</b>…<br>¿Se estará acercando a la verdad?</p>`, '#ffd23f');
+      return 3200;
+    case 'fallo':
+      SFX.fail(); vib([400]);
+      ov(`<div class="alarm"></div><h1 style="--oc:#ff3b5c">💥 ACUSACIÓN FALLIDA</h1><div class="big">${by?botFx(by.sus):''}</div><p><b>${esc(by?by.name:'')}</b> acusó a ${NM(e.sus)} con ${NM(e.wea)} en ${NM(e.room)}…<br>y se equivocó. <b style="color:var(--red)">¡ELIMINADO!</b></p>`, '#ff3b5c');
+      if (e.by===me) setTimeout(showSol, 3800);
+      return 3800;
+    case 'fin':
+      SFX.win(); vib([100,50,100,50,300]);
+      ov(`<h1 style="--oc:#ffd23f">⚖️ CASO RESUELTO</h1><div class="trio">${cardHTML(g.sol.sus,'lg')}${cardHTML(g.sol.wea,'lg')}${cardHTML(g.sol.room,'lg')}</div>
+        <p>${by?`<b>${esc(by.name)}</b> ${e.ok?'ha descubierto al asesino':'gana por ser el último en pie'}`:'Nadie lo ha resuelto'}</p>`, '#ffd23f');
+      return 5000;
+    case 'turno':
+      if (e.by===me){ SFX.turn(); vib([80,60,80]); toast('🎯 ¡Te toca!'); }
+      return 250;
+  }
+  return 10;
+}
+
+function showSol(){
+  const g=S.g; if(!g.sol) return;
+  modal(`<h2 class="t">👁️ El sobre secreto</h2><div class="pick">${cardHTML(g.sol.sus)}${cardHTML(g.sol.wea)}${cardHTML(g.sol.room)}</div><div class="ptxt" style="margin-bottom:10px">¡Shhh! No se lo digas a nadie.</div><button class="btn" onclick="closeModal()">Cerrar</button>`);
+}
+
+function showEnd(){
+  const g=S.g; if(!g || g.status!=='ended') return;
+  const w=pById(g.winner);
+  const o = modal(`<div style="text-align:center">
+    <h2 class="t" style="font-size:26px">🏆 ${w?esc(w.name)+' gana':'Caso sin resolver'}</h2>
+    ${w?`<div class="endBot" style="height:190px;display:flex;justify-content:center;--g:${ALL[w.sus].c}">${botFx(w.sus)}</div>`:''}
+    <div class="lbl" style="margin-top:10px">La solución</div>
+    <div class="pick">${cardHTML(g.sol.sus)}${cardHTML(g.sol.wea)}${cardHTML(g.sol.room)}</div>
+    <div class="ptxt" style="margin-bottom:14px">Fue <b>${NM(g.sol.sus)}</b> con <b>${NM(g.sol.wea)}</b> en <b>${NM(g.sol.room)}</b>. ¡Pobre Lucas!</div>
+    <div style="display:flex;flex-direction:column;gap:10px">
+      ${g.isHost?`<button class="btn big green" id="bAgain">🔁 Revancha (misma tripulación)</button>`:'<div class="ptxt" style="font-size:14px">El anfitrión puede lanzar la revancha</div>'}
+      <button class="btn ghost" onclick="exitGame()">🏠 Menú principal</button>
+      <button class="btn ghost" onclick="closeModal()">Ver el tablero</button>
+    </div></div>`);
+  const b=$('#bAgain'); if(b) b.onclick = async()=>{ closeModal(); try{ onState(await G('reiniciar')); }catch(e){ toast(errMsg(e),1); } };
+}
+
+/* ═════════════ CUENTA DEL ANFITRIÓN ═════════════ */
+let USER = null;
+try{ USER = JSON.parse(localStorage.getItem('kb_user')||'null'); }catch(e){}
+function setUser(r){ USER = {ses:r.ses, user:r.user}; try{ localStorage.setItem('kb_user', JSON.stringify(USER)); }catch(e){} }
+function logout(silent){ if(USER && !silent) api('salir',{ses:USER.ses}); USER=null; try{ localStorage.removeItem('kb_user'); }catch(e){} }
+
+function holdBtn(el, ms, onHold, onClick, bar){
+  let t=null, start=0, raf=0, fired=false;
+  const prog = ()=>{ if(!bar) return; const p=Math.min(1,(Date.now()-start)/ms); el.style.setProperty('--hold', (p*100)+'%'); if(p<1) raf=requestAnimationFrame(prog); };
+  const down = e=>{ fired=false; start=Date.now(); t=setTimeout(()=>{ fired=true; vib(60); el.style.setProperty('--hold','0%'); onHold(); }, ms); if(bar){ el.classList.add('holding'); prog(); } };
+  const up = ()=>{ clearTimeout(t); cancelAnimationFrame(raf); el.classList.remove('holding'); el.style.setProperty('--hold','0%'); };
+  el.addEventListener('pointerdown', down); el.addEventListener('pointerup', up); el.addEventListener('pointerleave', up); el.addEventListener('pointercancel', up);
+  el.addEventListener('contextmenu', e=>e.preventDefault());
+  el.addEventListener('click', e=>{ if(fired){ e.preventDefault(); e.stopPropagation(); fired=false; return; } onClick && onClick(e); });
+}
+function logoTaps(el){ let n=0, t=0; el.addEventListener('click', ()=>{ n++; clearTimeout(t); t=setTimeout(()=>n=0, 1500); if(n>=10){ n=0; Admin.abrir(); } }); }
+
+function loadGoogle(cb){
+  if (window.google && google.accounts) return cb();
+  if (document.getElementById('gsi')) { const i=setInterval(()=>{ if(window.google&&google.accounts){ clearInterval(i); cb(); } },200); return; }
+  const s=document.createElement('script'); s.id='gsi'; s.src='https://accounts.google.com/gsi/client'; s.async=true; s.onload=cb; document.head.appendChild(s);
+}
+
+function showLogin(next, vista){
+  vista = vista || 'entrar';
+  S.screen='login';
+  const tabs = `<div class="segm"><button class="${vista==='entrar'?'on':''}" data-v="entrar">Entrar</button><button class="${vista==='registro'?'on':''}" data-v="registro">Crear cuenta</button></div>`;
+  let form='';
+  if (vista==='entrar') form = `
+    <div class="lbl">Correo</div><input class="inp l" id="lEmail" type="email" autocomplete="username" placeholder="tu@correo.com">
+    <div class="lbl">Contraseña</div><input class="inp l" id="lPass" type="password" autocomplete="current-password" placeholder="••••••">
+    <button class="btn big green holdable" id="bEntrar">ENTRAR</button>
+    <button class="lnk" id="bOlv">¿Has olvidado la contraseña?</button>`;
+  else if (vista==='registro') form = `
+    <div class="lbl">Tu nombre</div><input class="inp l" id="rNom" maxlength="16" autocomplete="nickname" placeholder="Cómo te verán en la sala">
+    <div class="lbl">Correo</div><input class="inp l" id="rEmail" type="email" autocomplete="username" placeholder="tu@correo.com">
+    <div class="lbl">Contraseña</div><input class="inp l" id="rPass" type="password" autocomplete="new-password" placeholder="Mínimo 6 caracteres">
+    <button class="btn big green" id="bReg">CREAR CUENTA</button>`;
+  else if (vista==='recuperar') form = `
+    <div class="ptxt" style="font-size:15px">Te enviamos un código a tu correo para poner una contraseña nueva.</div>
+    <div class="lbl">Correo</div><input class="inp l" id="cEmail" type="email" placeholder="tu@correo.com">
+    <button class="btn" id="bCod">📧 Enviarme el código</button>
+    <div class="lbl">Código</div><input class="inp l" id="cCod" inputmode="numeric" maxlength="6" placeholder="123456">
+    <div class="lbl">Contraseña nueva</div><input class="inp l" id="cPass" type="password" autocomplete="new-password" placeholder="Mínimo 6 caracteres">
+    <button class="btn big green" id="bRes">CAMBIAR Y ENTRAR</button>
+    <button class="lnk" id="bVolv">← Volver</button>`;
+  app.innerHTML = `<div class="screen"><div class="menu glass" style="padding:20px">
+    <div id="lLogo">${logoHTML()}</div>
+    <div class="ptxt" style="font-size:15px;margin:-4px 0 4px">Para crear partidas necesitas cuenta. Tus invitados entran sin registrarse.</div>
+    ${vista!=='recuperar'?tabs:''}
+    ${form}
+    ${vista!=='recuperar'?`<div class="sep"><span>o</span></div><div id="gBtn" class="gBtn"></div>`:''}
+    <div class="row"><button class="btn ghost sm" id="bInst">📲 Instalar</button><button class="btn ghost sm" id="bShare">📤 Compartir</button></div>
+    <button class="btn ghost sm" id="bBack" style="align-self:center">← Volver al menú</button>
+  </div></div>`;
+  logoTaps($('#lLogo'));
+  const done = r=>{ setUser(r); SFX.reveal(); toast('👋 Hola, '+r.user.nombre); next ? next() : showMenu(); };
+  app.querySelectorAll('.segm button').forEach(b=>b.onclick=()=>showLogin(next,b.dataset.v));
+  $('#bBack').onclick = showMenu;
+  $('#bInst').onclick = instalar;
+  $('#bShare').onclick = ()=>share(BASE, '🤖💀 Juega conmigo a KILLBOT, el cluedo espacial:');
+  if (vista==='entrar'){
+    const go = async()=>{ const b=$('#bEntrar'); b.disabled=true;
+      try{ done(await call('entrar',{email:$('#lEmail').value, pass:$('#lPass').value})); }catch(e){ toast(errMsg(e),1); b.disabled=false; } };
+    holdBtn($('#bEntrar'), 3000, ()=>Admin.abrir(), go, true);
+    $('#lPass').onkeydown = e=>{ if(e.key==='Enter') go(); };
+    $('#bOlv').onclick = ()=>showLogin(next,'recuperar');
+  }
+  if (vista==='registro') $('#bReg').onclick = async()=>{ const b=$('#bReg'); b.disabled=true;
+    try{ done(await call('registro',{nombre:$('#rNom').value, email:$('#rEmail').value, pass:$('#rPass').value})); }catch(e){ toast(errMsg(e),1); b.disabled=false; } };
+  if (vista==='recuperar'){
+    $('#bVolv').onclick = ()=>showLogin(next,'entrar');
+    $('#bCod').onclick = async()=>{ try{ await call('recuperar',{email:$('#cEmail').value}); toast('📧 Código enviado. Mira tu correo (y la carpeta de spam)'); }catch(e){ toast(errMsg(e),1); } };
+    $('#bRes').onclick = async()=>{ try{ done(await call('restablecer',{email:$('#cEmail').value, codigo:$('#cCod').value, pass:$('#cPass').value})); }catch(e){ toast(errMsg(e),1); } };
+  }
+  if ($('#gBtn')) loadGoogle(()=>{
+    try{
+      google.accounts.id.initialize({client_id:CFG.GOOGLE, ux_mode:'popup', callback: async r=>{
+        toast('Comprobando tu cuenta de Google…');
+        try{ done(await call('google',{credential:r.credential})); }catch(e){ toast(errMsg(e),1); }
+      }});
+      google.accounts.id.renderButton($('#gBtn'), {theme:'filled_black', size:'large', shape:'pill', text:'continue_with', width: Math.min(360, $('#gBtn').offsetWidth||320)});
+    }catch(e){}
+  });
+}
+
+/* ═════════════ INSTALAR / COMPARTIR (PWA) ═════════════ */
+let deferredInstall = null;
+window.addEventListener('beforeinstallprompt', e=>{ e.preventDefault(); deferredInstall = e; });
+const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent);
+const isStandalone = matchMedia('(display-mode: standalone)').matches || navigator.standalone;
+function instalar(){
+  if (isStandalone) return toast('✅ KILLBOT ya está instalado');
+  if (deferredInstall){ deferredInstall.prompt(); deferredInstall.userChoice.finally(()=>deferredInstall=null); return; }
+  if (isIOS) return modal(`<h2 class="t">📲 Instalar en iPhone</h2><div class="howto">
+    <p>1. Abre esta página en <b>Safari</b>.</p><p>2. Pulsa el botón <b>Compartir</b> <span style="font-size:22px">⬆️</span> de abajo.</p>
+    <p>3. Elige <b>"Añadir a pantalla de inicio"</b>.</p><p>4. Pulsa <b>Añadir</b>. ¡Ya tienes KILLBOT como una app!</p></div>
+    <button class="btn green" onclick="closeModal()">Entendido</button>`);
+  modal(`<h2 class="t">📲 Instalar</h2><div class="howto"><p>Abre el menú del navegador <b>⋮</b> y pulsa <b>"Instalar aplicación"</b> o <b>"Añadir a pantalla de inicio"</b>.</p></div><button class="btn green" onclick="closeModal()">Entendido</button>`);
+}
+if ('serviceWorker' in navigator) window.addEventListener('load', ()=>navigator.serviceWorker.register('sw.js').catch(()=>{}));
+
+/* ═════════════ PANEL ADMIN (oculto) ═════════════ */
+const NFC_SVG = '<svg viewBox="0 0 64 64"><rect x="14" y="6" width="36" height="52" rx="7" fill="none" stroke="currentColor" stroke-width="3"/><path d="M27 24a9 9 0 0 1 0 16M33 19a16 16 0 0 1 0 26M39 14a23 23 0 0 1 0 36" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round"/></svg>';
+const Admin = (()=>{
+  let ADM = null, qrT = 0, pest = 'resumen', D = null;
+  try{ ADM = sessionStorage.getItem('kb_adm'); }catch(e){}
+  const hayNfc = 'NDEFReader' in window;
+  const setAdm = t=>{ ADM=t; try{ sessionStorage.setItem('kb_adm', t); }catch(e){} };
+
+  async function leerLlave(onSerial){
+    const r = new NDEFReader(); const ctrl = new AbortController();
+    await r.scan({signal:ctrl.signal});
+    return new Promise((res, rej)=>{
+      r.onreading = ev=>{ ctrl.abort(); res(String(ev.serialNumber||'').replace(/:/g,'')); };
+      r.onreadingerror = ()=>rej(new Error('No se pudo leer la llave. Prueba otra vez.'));
+      setTimeout(()=>{ ctrl.abort(); rej(new Error('Tiempo agotado')); }, 30000);
+    });
+  }
+
+  function abrir(){
+    SFX.click();
+    if (ADM) return panel();
+    clearInterval(qrT);
+    const m = modal(`<div style="text-align:center">
+      <div class="nfcAnim">${NFC_SVG}<i></i><i></i></div>
+      <h2 class="t" style="margin-top:6px">Acceso restringido</h2>
+      ${hayNfc ? `<div class="ptxt" id="aTxt">Acerca tu llave a la parte de atrás del móvil</div><button class="btn green" id="bNfc">🔑 Leer llave NFC</button>`
+               : `<div class="ptxt">Escanea este QR con tu móvil y acerca tu llave</div><div class="qr" id="aQr" style="margin:12px auto;width:max-content"></div>`}
+      <div class="sep"><span>o código de Google Authenticator</span></div>
+      <input class="inp code" id="aTotp" inputmode="numeric" maxlength="6" placeholder="000000" style="letter-spacing:8px;font-size:28px">
+      <button class="btn ghost" onclick="closeModal()" style="margin-top:10px">Cerrar</button></div>`, ()=>clearInterval(qrT));
+    $('#aTotp').oninput = async e=>{ const v=e.target.value.replace(/\D/g,''); e.target.value=v;
+      if (v.length===6){ try{ const r=await call('admTotp',{codigo:v}); setAdm(r.adm); clearInterval(qrT); panel(); }catch(er){ toast(errMsg(er),1); e.target.value=''; } } };
+    if (hayNfc) $('#bNfc').onclick = async()=>{
+      $('#aTxt').textContent='📡 Esperando la llave…';
+      try{ const serial = await leerLlave(); const r = await call('admLlave',{llave:serial, ses:USER&&USER.ses});
+        if (r.nueva) toast('🔑 Llave registrada como llave de admin'); setAdm(r.adm); SFX.reveal(); panel(); }
+      catch(e){ toast(errMsg(e),1); $('#aTxt').textContent='Acerca tu llave a la parte de atrás del móvil'; }
+    };
+    else call('admQr').then(r=>{
+      drawQR($('#aQr'), r.url, 180);
+      qrT = setInterval(async()=>{ const s = await api('admQrEstado',{q:r.q});
+        if (s.estado==='ok'){ clearInterval(qrT); setAdm(s.adm); SFX.reveal(); panel(); }
+        else if (s.estado==='caducado'){ clearInterval(qrT); toast('El QR ha caducado',1); closeModal(); } }, 2000);
+    }).catch(e=>toast(errMsg(e),1));
+  }
+
+  function autorizar(q){
+    app.innerHTML = `<div class="screen"><div class="menu glass" style="padding:24px;text-align:center">
+      <div class="nfcAnim">${NFC_SVG}<i></i><i></i></div><h2 class="t">Autorizar ordenador</h2>
+      <div class="ptxt" id="aTxt">${hayNfc?'Pulsa el botón y acerca tu llave NFC para abrir el panel en el ordenador':'Este móvil no puede leer NFC. Usa un Android con Chrome.'}</div>
+      ${hayNfc?'<button class="btn big green" id="bNfc">🔑 Leer llave</button>':''}
+      <button class="btn ghost" onclick="history.replaceState(null,\'\',location.pathname);showMenu()">Cancelar</button></div></div>`;
+    if (hayNfc) $('#bNfc').onclick = async()=>{
+      $('#aTxt').textContent='📡 Esperando la llave…';
+      try{ const serial = await leerLlave(); await call('admAutorizar',{q, llave:serial, ses:USER&&USER.ses});
+        SFX.reveal(); $('#aTxt').innerHTML='✅ <b>Ordenador autorizado.</b> Ya puedes cerrar esto.'; $('#bNfc').remove(); }
+      catch(e){ toast(errMsg(e),1); $('#aTxt').textContent='Vuelve a intentarlo'; }
+    };
+  }
+
+  async function adm(op, d){
+    const r = await api('adm',{adm:ADM, op, d});
+    if (!r.ok){ if (r.error==='ADMIN'){ ADM=null; try{sessionStorage.removeItem('kb_adm');}catch(e){} toast('La sesión de admin ha caducado',1); closeModal(); throw new Error('ADMIN'); } throw new Error(r.error); }
+    return r;
+  }
+
+  async function panel(){
+    closeModal();
+    const m = modal(`<div id="admBox"><div style="text-align:center;padding:30px"><div class="spinner" style="margin:auto"></div></div></div>`);
+    m.classList.add('adm');
+    try{ D = await adm('resumen'); pinta(); }catch(e){ if(e.message!=='ADMIN') toast(errMsg(e),1); }
+  }
+
+  const fecha = f=>{ try{ return new Date(f).toLocaleString('es-ES',{day:'2-digit',month:'2-digit',hour:'2-digit',minute:'2-digit'}); }catch(e){ return ''; } };
+  function bars(obj){ const e=Object.entries(obj).sort((a,b)=>b[1]-a[1]); const mx=Math.max(1,...e.map(x=>x[1]));
+    return e.map(([k,v])=>`<div class="bar"><span>${esc(k)}</span><i style="width:${v/mx*100}%"></i><b>${v}</b></div>`).join('') || '<div class="mut">Aún no hay partidas</div>'; }
+
+  function pinta(){
+    const box = $('#admBox'); if(!box) return;
+    const T = [['resumen','📊 Resumen'],['ajustes','⚙️ Ajustes'],['cartas','🃏 Cartas'],['usuarios','👥 Usuarios'],['seguridad','🔐 Seguridad']];
+    let h = `<div class="admHd"><h2 class="t" style="margin:0">Panel de control</h2><button class="ib" onclick="closeModal()">✕</button></div>
+      <div class="admTabs">${T.map(([k,n])=>`<button class="${pest===k?'on':''}" data-p="${k}">${n}</button>`).join('')}</div><div class="admBody">`;
+    const a = D.ajustes;
+    if (pest==='resumen'){
+      h += `<div class="kpis"><div><b>${D.stats.total}</b><span>Partidas jugadas</span></div><div><b>${D.activas.length}</b><span>Salas abiertas</span></div><div><b>${D.usuarios.length}</b><span>Anfitriones</span></div></div>
+        <div class="lbl">Salas abiertas ahora</div>
+        ${D.activas.map(s=>`<div class="admRow"><div><b>${s.code}</b> · ${s.modo==='tv'?'📺 TV':'📱 Móviles'} · ${s.status==='lobby'?'en sala de espera':s.status==='playing'?'🎮 jugando':'terminada'}<br><small>${esc(s.host)} → ${s.jug.map(esc).join(', ')}</small></div><button class="btn red sm" data-cerrar="${s.code}">Cerrar</button></div>`).join('') || '<div class="mut">No hay salas abiertas</div>'}
+        <div class="lbl">Asesino más repetido</div>${bars(D.stats.porSus)}
+        <div class="lbl">Arma más usada</div>${bars(D.stats.porArma)}
+        <div class="lbl">Últimas partidas</div>
+        ${D.stats.ultimas.map(u=>`<div class="admRow"><div><b>🏆 ${esc(u.gana)}</b> · ${fecha(u.f)} · ${u.min} min<br><small>${esc(u.jug)}<br>🔎 ${esc(u.sol)}</small></div></div>`).join('') || '<div class="mut">—</div>'}`;
+    }
+    if (pest==='ajustes'){
+      h += `<label class="fld">Segundos para enseñar carta<input class="inp l" id="aRef" type="number" min="10" max="180" value="${a.tRefutar}"></label>
+        <label class="fld">Pausa de los bots (milisegundos)<input class="inp l" id="aBot" type="number" min="600" max="8000" step="100" value="${a.botMs}"></label>
+        <label class="fld">Máximo de jugadores por sala<input class="inp l" id="aMax" type="number" min="2" max="9" value="${a.maxJug}"></label>
+        <label class="chk"><input type="checkbox" id="aBots" ${a.bots?'checked':''}> Permitir añadir bots</label>
+        <label class="fld">Aviso en el menú (vacío = sin aviso)<input class="inp l" id="aBan" maxlength="200" value="${esc(a.banner)}"></label>
+        <label class="fld">Texto de la intro (alerta roja)<textarea class="inp l" id="aIntro" rows="3" maxlength="300">${esc(a.intro)}</textarea></label>
+        <label class="chk"><input type="checkbox" id="aMant" ${a.mant?'checked':''}> 🚧 Modo mantenimiento (no se pueden crear partidas)</label>
+        <label class="fld">Mensaje de mantenimiento<input class="inp l" id="aMantMsg" maxlength="200" value="${esc(a.mantMsg)}"></label>
+        <button class="btn green" id="aSave">💾 Guardar ajustes</button>`;
+    }
+    if (pest==='cartas'){
+      h += `<div class="ptxt" style="font-size:14px;margin-bottom:8px">Cambia el nombre, la descripción o el color de una carta, o pon la URL de una imagen nueva. Si actualizas los PNG en GitHub, pulsa <b>Recargar imágenes</b> para que se vean en todos los móviles.</div>
+        <button class="btn gold" id="aImg">🔄 Recargar imágenes (versión ${a.imgVer})</button>
+        ${[['Sospechosos',SUS],['Armas',WEA],['Salas',ROOMS]].map(([t,l])=>`<div class="lbl">${t}</div>`+l.map(x=>{ const o=D.cartas[x.id]||{};
+          return `<div class="admCard" data-id="${x.id}"><div class="mini">${cardHTML(x.id)}</div><div class="f">
+            <input class="inp l s" data-k="n" placeholder="${esc(BASE_NM[x.id])}" value="${esc(o.n||'')}">
+            <input class="inp l s" data-k="d" placeholder="Descripción" value="${esc(o.d||'')}">
+            <div class="row"><input class="inp l s" data-k="c" type="color" value="${o.c||x.c0||'#22e4ff'}" style="padding:2px;height:38px"><input class="inp l s" data-k="img" placeholder="URL imagen (opcional)" value="${esc(o.img||'')}"></div>
+            <div class="row"><button class="btn sm green" data-save>Guardar</button><button class="btn sm ghost" data-reset>Original</button></div></div></div>`; }).join('')).join('')}`;
+    }
+    if (pest==='usuarios'){
+      h += D.usuarios.map(u=>`<div class="admRow"><div><b>${esc(u.nombre)}</b> ${u.google?'<small>(Google)</small>':''}<br><small>${esc(u.email)} · ${u.partidas} partidas · ${fecha(u.ultimo)}</small></div>
+        <button class="btn sm ${u.bloq?'green':'red'}" data-bloq="${esc(u.email)}" data-v="${u.bloq?0:1}">${u.bloq?'Desbloquear':'Bloquear'}</button></div>`).join('') || '<div class="mut">Aún no hay anfitriones registrados</div>';
+    }
+    if (pest==='seguridad'){
+      h += `<div class="lbl">Llaves NFC</div><div class="ptxt" style="font-size:15px">${D.llaves} llave(s) registrada(s). La primera se registra sola al entrar con tu llave estando logueado con ${esc(CFG.ADMIN)}.</div>
+        <button class="btn red sm" id="aLlaves">Borrar todas las llaves</button>
+        <div class="lbl" style="margin-top:16px">Google Authenticator</div>
+        <div class="ptxt" style="font-size:15px">${D.totp?'✅ Activado':'❌ No configurado'}</div>
+        <div id="totpBox"></div>
+        <div class="row"><button class="btn sm" id="aTotpN">${D.totp?'Generar uno nuevo':'Activar'}</button>${D.totp?'<button class="btn sm red" id="aTotpQ">Desactivar</button>':''}</div>
+        <button class="btn ghost" style="margin-top:16px" id="aOut">🚪 Cerrar sesión de admin</button>`;
+    }
+    h += `</div>`;
+    box.innerHTML = h;
+    box.querySelectorAll('.admTabs button').forEach(b=>b.onclick=()=>{ pest=b.dataset.p; pinta(); });
+    box.querySelectorAll('[data-cerrar]').forEach(b=>b.onclick=async()=>{ if(!confirm('¿Cerrar la sala '+b.dataset.cerrar+'?')) return; try{ await adm('cerrar',{code:b.dataset.cerrar}); D=await adm('resumen'); pinta(); toast('Sala cerrada'); }catch(e){} });
+    const on=(id,f)=>{ const e=box.querySelector(id); if(e) e.onclick=f; };
+    on('#aSave', async()=>{ try{ const r=await adm('ajustes',{tRefutar:$('#aRef').value, botMs:$('#aBot').value, maxJug:$('#aMax').value, bots:$('#aBots').checked, banner:$('#aBan').value, intro:$('#aIntro').value, mant:$('#aMant').checked, mantMsg:$('#aMantMsg').value});
+      D.ajustes=r.ajustes; toast('✅ Ajustes guardados'); }catch(e){ if(e.message!=='ADMIN') toast(errMsg(e),1); } });
+    on('#aImg', async()=>{ try{ const r=await adm('imgVer'); D.ajustes.imgVer=r.imgVer; toast('🔄 Imágenes actualizadas (versión '+r.imgVer+')'); pinta(); }catch(e){} });
+    box.querySelectorAll('.admCard').forEach(c=>{
+      const id=c.dataset.id;
+      c.querySelector('[data-save]').onclick = async()=>{ const d={id}; c.querySelectorAll('[data-k]').forEach(i=>d[i.dataset.k]=i.value.trim());
+        if (d.c && d.c.toLowerCase()===(ALL[id].c0||'').toLowerCase()) delete d.c;
+        try{ const r=await adm('carta',d); D.cartas=r.cartas; aplicaCartas(r.cartas); toast('✅ Carta guardada'); pinta(); }catch(e){ if(e.message!=='ADMIN') toast(errMsg(e),1); } };
+      c.querySelector('[data-reset]').onclick = async()=>{ try{ const r=await adm('carta',{id}); D.cartas=r.cartas; aplicaCartas(r.cartas); toast('Carta original'); pinta(); }catch(e){} };
+    });
+    box.querySelectorAll('[data-bloq]').forEach(b=>b.onclick=async()=>{ try{ await adm('bloquear',{email:b.dataset.bloq, bloq:b.dataset.v==='1'}); D=await adm('resumen'); pinta(); }catch(e){ if(e.message!=='ADMIN') toast(errMsg(e),1); } });
+    on('#aLlaves', async()=>{ if(!confirm('¿Borrar todas las llaves? Tendrás que registrar la tuya otra vez.')) return; try{ await adm('llavesBorrar'); D.llaves=0; pinta(); }catch(e){} });
+    on('#aTotpN', async()=>{ try{ const r=await adm('totpNuevo'); D.totp=true; pinta();
+      $('#totpBox').innerHTML=`<div class="ptxt" style="font-size:14px">Escanéalo con Google Authenticator:</div><div class="qr" id="tQr" style="margin:10px auto;width:max-content"></div><div class="ptxt" style="font-size:13px;word-break:break-all">Clave: <b>${r.secreto}</b></div>`;
+      drawQR($('#tQr'), r.url, 170); }catch(e){} });
+    on('#aTotpQ', async()=>{ try{ await adm('totpQuitar'); D.totp=false; pinta(); }catch(e){} });
+    on('#aOut', ()=>{ ADM=null; try{sessionStorage.removeItem('kb_adm');}catch(e){} closeModal(); toast('Sesión de admin cerrada'); });
+  }
+
+  return { abrir, autorizar };
+})();
+
+/* ═════════════ ARRANQUE ═════════════ */
+(async function init(){
+  loading('Encendiendo motores…');
+  const c = await api('config');
+  if (c.ok){ PUB = c.cfg; IMGV = PUB.imgVer||1; aplicaCartas(PUB.cartas); }
+  if (USER) api('yo',{ses:USER.ses}).then(r=>{ if(!r.ok && r.error==='SESION') logout(true); else if(r.ok){ USER.user=r.user; try{localStorage.setItem('kb_user',JSON.stringify(USER));}catch(e){} } });
+  if (ADMQ) return Admin.autorizar(ADMQ);
+  const s = loadSess();
+  if (SALA0){
+    if (s && s.code===SALA0){ Object.assign(S,{code:s.code,token:s.token,pid:s.pid,modo:s.modo}); return enterRoom(); }
+    return showJoin(SALA0);
+  }
+  if (MODO0==='tv') return create('tv','');
+  showMenu();
+})();
+</script>
+</body>
+</html>
