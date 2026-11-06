@@ -403,6 +403,10 @@ textarea.inp{resize:vertical;font-family:inherit}
 .fan em{font-style:normal;margin-left:6px;font-size:12px;color:var(--mut)}
 .tvSide .fan i{width:2.2vh;height:3.3vh;margin-left:-1.2vh}
 .tvSide .fan em{font-size:1.8vh}
+/* cartas que ya conoces: en gris */
+.pick .kcard.known{filter:grayscale(1) brightness(.5) contrast(.9);box-shadow:none!important}
+.pick .kcard.known.sel{filter:grayscale(.6) brightness(.8)}
+.kTag{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) rotate(-18deg);padding:3px 8px;border:2px solid #fff;border-radius:6px;font-family:Orbitron;font-weight:900;font-size:11px;letter-spacing:2px;color:#fff;background:rgba(0,0,0,.55);z-index:3;pointer-events:none}
 /* avisos */
 .kbc{position:fixed;inset:0;z-index:95;display:flex;align-items:center;justify-content:center;padding:20px;background:rgba(0,0,0,.72);backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px);animation:ovIn .2s both}
 .kbc.out{animation:ovOut .25s both}
@@ -1162,12 +1166,19 @@ function pickTrio(accuse){
     ${sec('¿Quién?',SUS,'sus')}${sec('¿Con qué?',WEA,'wea')}${accuse?sec('¿Dónde?',ROOMS,'room'):''}
     <button class="btn big ${accuse?'red':'green'}" id="bConf" disabled>${accuse?'⚖️ ACUSAR':'🔍 Sospechar'}</button>
     <button class="btn ghost" onclick="closeModal()" style="margin-top:8px">Cancelar</button>`);
-  const mine = new Set((g.hand||[]).concat(g.seen||[]));
-  m.querySelectorAll('.pick .kcard').forEach(c=>{ if (mine.has(c.dataset.id)) c.style.opacity='.55';
+  const hand=new Set(g.hand||[]), seen=new Set(g.seen||[]);
+  m.querySelectorAll('.pick .kcard').forEach(c=>{ const id=c.dataset.id;
+    if (hand.has(id)||seen.has(id)){ c.classList.add('known'); c.insertAdjacentHTML('beforeend',`<span class="kTag">${hand.has(id)?'TUYA':'VISTA'}</span>`); }
     c.onclick=()=>{ SFX.click(); const k=c.parentElement.dataset.k; sel[k]=c.dataset.id;
       c.parentElement.querySelectorAll('.kcard').forEach(x=>x.classList.toggle('sel',x===c));
       $('#bConf').disabled = !(sel.sus&&sel.wea&&sel.room); }; });
-  $('#bConf').onclick=()=>{ closeModal(); act(accuse?'acusar':'sospechar', sel); };
+  $('#bConf').onclick=async()=>{
+    if (accuse){
+      const ok = await kbConfirm(`Vas a acusar a <b style="color:${ALL[sel.sus].c}">${NM(sel.sus)}</b> con <b>${NM(sel.wea)}</b> en <b>${NM(sel.room)}</b>.<br><br>Si te equivocas quedarás <b style="color:var(--red)">ELIMINADO</b> y ya no podrás ganar.<br><small style="color:var(--mut)">¿Solo querías sospechar? Cancela y usa 🔍 Sospechar.</small>`,
+        {title:'¿ACUSACIÓN FINAL?', icon:'⚖️', ok:'⚖️ Acusar', cancel:'Pensarlo mejor', danger:true, color:'var(--red)'});
+      if (!ok) return;
+    }
+    closeModal(); act(accuse?'acusar':'sospechar', sel); };
 }
 
 function showRefute(){
@@ -1626,7 +1637,7 @@ const Admin = (()=>{
 })();
 
 /* ═════════════ AUTO-ACTUALIZACIÓN ═════════════ */
-const APP_V = '16';
+const APP_V = '17';
 async function checkVersion(){
   try{
     const r = await fetch('version.json?t='+Date.now(), {cache:'no-store'}); if(!r.ok) return;
