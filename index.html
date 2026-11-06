@@ -417,7 +417,7 @@ textarea.inp{resize:vertical;font-family:inherit}
 .scene .sWea .emo{font-size:60px}
 @keyframes dropIn{from{transform:translateY(-60vh) scale(.6);opacity:0}}
 /* ver sala en grande */
-.roomView{position:fixed;inset:0;z-index:60;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:20px;background:rgba(2,4,12,.92);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);animation:ovIn .25s both}
+.roomView{pointer-events:auto;position:fixed;inset:0;z-index:60;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:12px;padding:20px;background:rgba(2,4,12,.92);backdrop-filter:blur(6px);-webkit-backdrop-filter:blur(6px);animation:ovIn .25s both}
 .roomView.out{animation:ovOut .25s both}
 .rvX{position:absolute;top:max(14px,env(safe-area-inset-top));right:14px;width:46px;height:46px;border-radius:14px;background:rgba(255,59,92,.2);border:1px solid var(--red);font-size:22px;font-weight:900;box-shadow:0 0 14px rgba(255,59,92,.4)}
 .rvImg{position:relative;width:min(92vw,600px);aspect-ratio:1.07;display:flex;align-items:center;justify-content:center;font-size:140px}
@@ -436,6 +436,13 @@ textarea.inp{resize:vertical;font-family:inherit}
 .tvlR{display:flex;flex-direction:column;align-items:center;gap:12px}
 .tvq{padding:14px;border-radius:20px;min-width:200px;min-height:200px;display:flex;align-items:center;justify-content:center;box-shadow:0 0 40px rgba(34,228,255,.45)}
 @media (max-aspect-ratio:1/1){.tvLog{grid-template-columns:1fr;text-align:center}.tvlL .logo{text-align:center}.tvSteps{text-align:left}}
+/* modo ligero: menos filtros y animaciones pesadas */
+.lite .holo,.lite .scan{display:none!important}
+.lite .tok img,.lite .wtok img,.lite .room img,.lite .core img,.lite .kcard .art img,.lite .bot img,.lite .slot img,.lite .pl img{filter:none!important}
+.lite .glass,.lite .kbc,.lite .roomView{backdrop-filter:none!important;-webkit-backdrop-filter:none!important}
+.lite .board:before,.lite .lines .ringL,.lite .lines .spoke{animation:none!important}
+.lite .kcard{box-shadow:none!important}
+.lite #stars{display:none}
 /* cartas que ya conoces: en gris */
 .pick .kcard.known{filter:grayscale(1) brightness(.5) contrast(.9);box-shadow:none!important}
 .pick .kcard.known.sel{filter:grayscale(.6) brightness(.8)}
@@ -555,19 +562,20 @@ window.kbFb = function(el){
   if (fb.startsWith('data:')) el.src = fb;
   else { const s = document.createElement('span'); s.className = 'emo ' + el.className; s.textContent = fb; el.replaceWith(s); }
 };
-function art(id){
+function art(id, small){
   const x = ALL[id]; if (!x) return '';
+  const sf = small ? '_s' : '';
   if (x.img) return `<img src="${esc(x.img)}" data-f="x_${id}" data-fb="${x.t==='sus'?robotSVG(x.c):x.e}" onerror="kbFb(this)" draggable="false">`;
-  if (x.t==='sus') return pimg('pj_'+id, robotSVG(x.c));
-  if (x.t==='wea') return pimg('arma_'+id, x.e);
-  return pimg('sala_'+id, x.e);
+  if (x.t==='sus') return pimg('pj_'+id+sf, robotSVG(x.c));
+  if (x.t==='wea') return pimg('arma_'+id+sf, x.e);
+  return pimg('sala_'+id+sf, x.e);
 }
 const lucas = n => pimg('victima_'+n, robotSVG('#17ff5f', n===4));
 /* personaje con propulsores animados (las imágenes vienen sin llamas) */
 /* posición de los propulsores en cada PNG (x = centro %, w = ancho %); null = sin propulsores */
 const FLAMES = { nova:{x:42,w:30}, voltia:{x:49,w:26}, tuercas:{x:50,w:32}, chispas:null, megaton:{x:54,w:40},
   byte:{x:44,w:34}, cromo:{x:42,w:30}, octo:null, botler:{x:36,w:26} };
-function botFx(id){ const x=ALL[id], f=FLAMES[id];
+function botFx(id){ const x=ALL[id], f=FLAMES[id]; const art=(i)=>window.art(i,1);
   const fl = (f && !x.img) ? `<div class="fl" style="left:${f.x}%;width:${f.w}%"><i></i><i></i><i></i></div>` : '';
   return `<div class="bot" style="--fc:${x.c}">${art(id)}${fl}</div>`; }
 const accImg = id => pimg('acusado_'+id, robotSVG(ALL[id].c));
@@ -705,6 +713,11 @@ function isStandaloneFS(){ return matchMedia('(display-mode: standalone)').match
 let fsOff=false; try{ fsOff = sessionStorage.getItem('kb_nofs')==='1'; }catch(e){}
 ['pointerdown','keydown','touchend'].forEach(ev=>document.addEventListener(ev, e=>{ if(!fsOff && !(e.target.closest && e.target.closest('#bWeb,#bFs'))) FS.go(); }, true));
 function toggleFs(){ if(FS.on()){ fsOff=true; try{sessionStorage.setItem('kb_nofs','1');}catch(e){} FS.exit(); } else { fsOff=false; try{sessionStorage.removeItem('kb_nofs');}catch(e){} FS.go(); } }
+
+/* ═════════════ MODO LIGERO (televisores y equipos con poca memoria) ═════════════ */
+const LITE = /smart-?tv|smarttv|tizen|web0s|webos|netcast|hbbtv|bravia|aftb|aftt|aftm|crkey|googletv|android tv|vidaa|philipstv|viera/i.test(navigator.userAgent) || (navigator.deviceMemory && navigator.deviceMemory<=2);
+if (LITE) document.documentElement.classList.add('lite');
+function setTvLite(){ if(S.g && S.g.modo==='tv' && !S.g.me) document.documentElement.classList.add('lite'); }
 
 /* ═════════════ ESTRELLAS ═════════════ */
 (function(){
@@ -936,7 +949,7 @@ async function poll(){
   try{ const g = await api('estado', {code:S.code, tk:S.token, ver:S.ver}); onState(g); }
   catch(e){} finally{ polling=false; }
 }
-function enterRoom(){ S.ver=0; S.g=null; S.lastEv=null; S.endShown=false; S.screen=''; loading('Conectando…'); startPoll(); }
+function enterRoom(){ try{ sessionStorage.setItem('kb_in', S.code||''); }catch(e){} S.ver=0; S.g=null; S.lastEv=null; S.endShown=false; S.screen=''; loading('Conectando…'); startPoll(); }
 
 function onState(g){
   if (!g || g.ok===false) return;
@@ -978,7 +991,7 @@ function renderLobby(){
     </div>
     <div class="glass" style="padding:14px">
       <div class="lbl">Tripulación (${g.players.length}/9)</div>
-      <div class="plist">${g.players.map(p=>`<div class="pl" style="--c:${ALL[p.sus].c}">${art(p.sus)}<div class="n">${esc(p.name)}</div><div class="tag">${p.host?'👑 ANFITRIÓN':p.bot?'🤖 BOT':''}</div>${amHost()&&!p.host?`<button class="x" data-k="${p.id}">✕</button>`:''}</div>`).join('')}</div>
+      <div class="plist">${g.players.map(p=>`<div class="pl" style="--c:${ALL[p.sus].c}">${art(p.sus,1)}<div class="n">${esc(p.name)}</div><div class="tag">${p.host?'👑 ANFITRIÓN':p.bot?'🤖 BOT':''}</div>${amHost()&&!p.host?`<button class="x" data-k="${p.id}">✕</button>`:''}</div>`).join('')}</div>
     </div>
     ${amHost()?`<div class="row"><button class="btn" id="bBot" ${g.players.length>=9?'disabled':''}>🤖 Añadir bot</button></div>
       <button class="btn big green" id="bGo" ${g.players.length<2?'disabled':''}>▶ Empezar partida <small style="opacity:.75;font-size:12px">· 1 💎</small></button>`
@@ -1030,7 +1043,7 @@ async function startGame(){
   SFX.click();
   try{ onState(await G('empezar')); refreshUser(); }catch(e){ if(!creditErr(e)) toast(errMsg(e),1); }
 }
-function exitGame(){
+function exitGame(){ try{ sessionStorage.removeItem('kb_in'); }catch(e){}
   if (S.g && S.g.status==='lobby' && S.g.me && !S.g.isHost) G('quitar', {pid:S.g.me}).catch(()=>{});
   clearSess(); S.code=null; S.g=null; closeModal(); fx.innerHTML=''; showMenu();
 }
@@ -1040,7 +1053,7 @@ const isTV = () => S.g && S.g.modo==='tv' && !S.g.me;
 
 function buildGame(){
   S.screen='game'; S.tab=null;
-  if (isTV()){
+  if (isTV()){ setTvLite();
     app.innerHTML = `<div class="game tv"><div class="boardWrap" style="align-items:center"><div id="board" class="board"></div></div>
       <div class="tvSide">
         <div style="display:flex;align-items:center;justify-content:space-between">${logoHTML()}<div class="cd" style="font-family:Orbitron;font-size:2.4vh;color:var(--mut)">SALA ${S.g.code}</div></div>
@@ -1079,9 +1092,9 @@ function buildBoard(el){
   for(let k=0;k<18;k++) svg+=`<path class="chev" d="M-1.6 -1.6 L0.6 0 L-1.6 1.6"><animateMotion dur="18s" repeatCount="indefinite" rotate="auto" begin="${-k}s"><mpath href="#ringP"/></animateMotion></path>`;
   svg += `</svg>`;
   let h = svg + `<div class="core" data-room="nucleo">${pimg('sala_nucleo','🔴')}<div class="rname" style="bottom:-9%">Núcleo</div></div>`;
-  ROOMS.forEach((r,i)=>{ const p=roomXY(i); h+=`<div class="room" data-room="${r.id}" style="left:${p.x}%;top:${p.y}%;--rc:${r.c}">${art(r.id)}<div class="rname">${r.n}</div></div>`; });
-  SUS.forEach(s=>{ h+=`<div class="tok" id="tok_${s.id}" style="--c:${s.c};left:50%;top:50%"><i class="disc"></i>${art(s.id)}</div>`; });
-  WEA.forEach(w=>{ h+=`<div class="wtok" id="wt_${w.id}" style="left:50%;top:50%">${art(w.id)}</div>`; });
+  ROOMS.forEach((r,i)=>{ const p=roomXY(i); h+=`<div class="room" data-room="${r.id}" style="left:${p.x}%;top:${p.y}%;--rc:${r.c}">${art(r.id,1)}<div class="rname">${r.n}</div></div>`; });
+  SUS.forEach(s=>{ h+=`<div class="tok" id="tok_${s.id}" style="--c:${s.c};left:50%;top:50%"><i class="disc"></i>${art(s.id,1)}</div>`; });
+  WEA.forEach(w=>{ h+=`<div class="wtok" id="wt_${w.id}" style="left:50%;top:50%">${art(w.id,1)}</div>`; });
   h += `<div class="sobre" id="sobre">${flipHTML('', '', 0)}${flipHTML('', '', 0)}${flipHTML('', '', 0)}<b>SOBRE SECRETO</b></div>`;
   el.innerHTML = h;
   el.onclick = e=>{ const r=e.target.closest('[data-room]'); if(!r) return;
@@ -1155,10 +1168,10 @@ function updateGame(prev){
   if (g.status==='ended'){
     const w=g.players.find(p=>p.id===g.winner);
     tb.style.setProperty('--c', w?ALL[w.sus].c:'#888');
-    tb.innerHTML = `${w?art(w.sus):''}<div style="min-width:0"><b>🏆 ${w?esc(w.name):'Sin ganador'}</b><small>Caso cerrado</small></div>`;
+    tb.innerHTML = `${w?art(w.sus,1):''}<div style="min-width:0"><b>🏆 ${w?esc(w.name):'Sin ganador'}</b><small>Caso cerrado</small></div>`;
   } else {
     tb.style.setProperty('--c', cs.c);
-    tb.innerHTML = `${art(cur.sus)}<div style="min-width:0"><b>${cur.id===g.me?'¡TU TURNO!':'Turno de '+esc(cur.name)}</b><small>${phaseText(g)}</small></div>`;
+    tb.innerHTML = `${art(cur.sus,1)}<div style="min-width:0"><b>${cur.id===g.me?'¡TU TURNO!':'Turno de '+esc(cur.name)}</b><small>${phaseText(g)}</small></div>`;
   }
   updateBoard();
   if (isTV()) updateTvSide(); else { renderPanel(); if (S.tab) openTab(S.tab, true); }
@@ -1284,7 +1297,7 @@ function openTab(t, refresh){
 
 function fanHTML(n){ const k=Math.min(n,8), m=(k-1)/2; let h=''; for(let i=0;i<k;i++) h+=`<i style="--k:${i};--m:${m}"></i>`; return `<span class="fan">${h}<em>${n}</em></span>`; }
 function playersHTML(){
-  const g=S.g; return `<div class="plist">${g.players.map((p,i)=>`<div class="pl" style="--c:${ALL[p.sus].c};${i===g.turn&&g.status==='playing'?'background:rgba(255,255,255,.1)':''}">${art(p.sus)}
+  const g=S.g; return `<div class="plist">${g.players.map((p,i)=>`<div class="pl" style="--c:${ALL[p.sus].c};${i===g.turn&&g.status==='playing'?'background:rgba(255,255,255,.1)':''}">${art(p.sus,1)}
     <div class="n">${i===g.turn&&g.status==='playing'?'▶ ':''}${esc(p.name)}${p.id===g.me?' (tú)':''}</div><div class="tag">${!p.alive?'💀 ELIMINADO ':(p.bot?'🤖':'')}${fanHTML(p.n)}</div></div>`).join('')}</div>`;
 }
 
@@ -1295,7 +1308,7 @@ const MARKS=['','✖','?','✔'];
 function notesHTML(){
   const g=S.g, nt=getNotes(), hand=new Set(g.hand||[]), seen=new Set(g.seen||[]);
   const sec=(t,list)=>`<div class="nsec"><div class="lbl">${t}</div>${list.map(x=>{ const auto=hand.has(x.id)?'mia':seen.has(x.id)?'vis':''; const mk=nt[x.id]||'';
-    return `<div class="nrow ${auto||mk==='✖'?'cross':''}" style="border-left:3px solid ${ALL[x.id].c}">${art(x.id)}<div class="n">${x.n}</div>${auto?`<span class="bd ${auto}">${auto==='mia'?'MÍA':'VISTA'}</span>`:''}<button class="mk" data-id="${x.id}">${auto?'✖':mk}</button></div>`; }).join('')}</div>`;
+    return `<div class="nrow ${auto||mk==='✖'?'cross':''}" style="border-left:3px solid ${ALL[x.id].c}">${art(x.id,1)}<div class="n">${x.n}</div>${auto?`<span class="bd ${auto}">${auto==='mia'?'MÍA':'VISTA'}</span>`:''}<button class="mk" data-id="${x.id}">${auto?'✖':mk}</button></div>`; }).join('')}</div>`;
   return `<div style="color:var(--mut);font-size:13px;margin-bottom:10px">Toca la casilla para marcar: ✖ descartado · ? dudoso · ✔ sospechoso. Tus cartas y las que te enseñan se tachan solas.</div>` + sec('Sospechosos',SUS)+sec('Armas',WEA)+sec('Salas',ROOMS);
 }
 function bindNotes(){
@@ -1750,7 +1763,7 @@ const Admin = (()=>{
 })();
 
 /* ═════════════ AUTO-ACTUALIZACIÓN ═════════════ */
-const APP_V = '20';
+const APP_V = '21';
 async function checkVersion(){
   try{
     const r = await fetch('version.json?t='+Date.now(), {cache:'no-store'}); if(!r.ok) return;
@@ -1783,6 +1796,8 @@ setTimeout(checkVersion, 4000);
     return showJoin(SALA0);
   }
   let upd=false; try{ upd=sessionStorage.getItem('kb_upd')==='1'; sessionStorage.removeItem('kb_upd'); }catch(e){}
+  let inR=''; try{ inR=sessionStorage.getItem('kb_in')||''; }catch(e){}
+  if (s && inR && inR===s.code){ Object.assign(S,{code:s.code,token:s.token,pid:s.pid,modo:s.modo}); return enterRoom(); }
   if (upd && s){ Object.assign(S,{code:s.code,token:s.token,pid:s.pid,modo:s.modo}); return enterRoom(); }
   if (MODO0==='tv') return create('tv','');
   showMenu();
